@@ -50,7 +50,11 @@ class FishCounterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("YOLOv6 Fish Counter")
-        self.root.state('zoomed')  # Start maximized
+        if platform.system() == "Windows":
+            self.root.state('zoomed')
+        else:
+            self.root.attributes('-zoomed', True)
+
         self.root.configure(bg="Blue")
         self.running = False
         self.frame = None
