@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 import torch
 import numpy as np
+import platform
 
 YOLOV6_DIR = Path(__file__).parent / "YOLOv6"
 sys.path.insert(0, str(YOLOV6_DIR))
@@ -63,7 +64,7 @@ class YOLOv6Detector:
 if __name__ == "__main__":
     model_path = "../models/model1.pt"
     yaml_path = "../models/dataset.yaml"
-    camera_path = 1 #ini buat windows pake int, linux pake string
+    camera_path = "/dev/video0" if platform.system() == "Linux" else 0  
     detector = YOLOv6Detector(model_path, yaml_path, device="cpu")  # or "cuda:0" for GPU
 
     cap = cv2.VideoCapture(camera_path)

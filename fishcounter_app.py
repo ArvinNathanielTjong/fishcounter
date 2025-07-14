@@ -9,24 +9,42 @@ import cv2
 import numpy as np
 import glob
 import os
+import platform
 
 # Add scripts/ to sys.path to import YOLOv6Detector
 sys.path.insert(0, str(Path(__file__).parent / "scripts"))
 from detector import YOLOv6Detector
 
-# def list_video_devices(): #linux
-#     # List /dev/video* devices
-#     devices = sorted(glob.glob('/dev/video*')) #linux
-#     return devices if devices else ["/dev/video0"] #linux
 
-def list_video_devices(max_devices=5): #windows
-    devices = []
-    for i in range(max_devices):
-        cap = cv2.VideoCapture(i)
-        if cap is not None and cap.isOpened():
-            devices.append(str(i))
-            cap.release()
-    return devices if devices else ["0"]
+def list_video_devices(max_devices=10):
+    """
+    Lists available video devices that can be opened by OpenCV.
+    Works on Windows and Linux (Ubuntu).
+
+    Returns:
+        A list of camera paths:
+        - On Windows: ['0', '1', ...]
+        - On Linux: ['/dev/video0', '/dev/video1', ...]
+    """
+    system_platform = platform.system()
+    available_devices = []
+
+    if system_platform == "Linux":
+        video_paths = sorted(glob.glob("/dev/video*"))
+        for path in video_paths:
+            cap = cv2.VideoCapture(path)
+            if cap is not None and cap.isOpened():
+                available_devices.append(path)
+                cap.release()
+    else:
+        for i in range(max_devices):
+            cap = cv2.VideoCapture(i)
+            if cap is not None and cap.isOpened():
+                available_devices.append(str(i))
+                cap.release()
+
+    return available_devices if available_devices else ["0"]
+
 
 class FishCounterApp:
     def __init__(self, root):
@@ -41,7 +59,7 @@ class FishCounterApp:
         # Camera path selection with ComboBox
         cam_frame = tk.Frame(root)
         cam_frame.pack(pady=5)
-        cam_frame.configure(bg="red")  # Blue background
+        cam_frame.configure(bg="red")
         tk.Label(cam_frame, text="Camera Device:").pack(side=tk.LEFT)
         self.available_cams = list_video_devices()
         self.camera_var = tk.StringVar(value=self.available_cams[0])
@@ -64,28 +82,33 @@ class FishCounterApp:
         # Detector
         model_path = str(Path(__file__).parent / "models" / "model1.pt")
         yaml_path = str(Path(__file__).parent / "models" / "dataset.yaml")
-        self.detector = YOLOv6Detector(model_path, yaml_path, device="cpu")  # or "cuda:0"
+        self.detector = YOLOv6Detector(model_path, yaml_path, device="cpu")
 
         self.cap = None
         self.thread = None
 
-        # Default black frame (for fallback)
-        self.default_shape = (480, 640, 3)  # Height, Width, Channels
+        self.default_shape = (480, 640, 3)
         self.black_frame = np.zeros(self.default_shape, dtype=np.uint8)
 
     def start_detection(self):
         if not self.running:
             cam_path = self.camera_var.get()
-            self.cap = cv2.VideoCapture(int(cam_path)) #buat windows pake int, linux pake string
+
+            # Handle Linux vs Windows path/index
+            if platform.system() == "Linux":
+                self.cap = cv2.VideoCapture(cam_path)  # e.g., "/dev/video0"
+            else:
+                self.cap = cv2.VideoCapture(int(cam_path))  # e.g., 0, 1
+
             if not self.cap.isOpened():
                 self.count_label.config(text=f"Error: Could not open camera at {cam_path}")
-                # Still show black frame
                 self.running = True
                 self.start_button.config(state=tk.DISABLED)
                 self.stop_button.config(state=tk.NORMAL)
                 self.thread = threading.Thread(target=self.detection_loop, daemon=True)
                 self.thread.start()
                 return
+
             self.running = True
             self.start_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.NORMAL)
@@ -107,7 +130,6 @@ class FishCounterApp:
             if self.cap:
                 ret, frame = self.cap.read()
             if not ret or frame is None or frame.size == 0:
-                # Use black frame if no valid frame
                 frame = self.black_frame.copy()
                 detections = []
                 fish_count = 0
@@ -119,7 +141,7 @@ class FishCounterApp:
             img_pil = Image.fromarray(img_rgb)
             img_tk = ImageTk.PhotoImage(img_pil)
             self.root.after(0, self.update_ui, img_tk, fish_count)
-            time.sleep(0.03)  # ~30 FPS
+            time.sleep(0.03)
 
     def update_ui(self, img_tk, count):
         self.video_label.imgtk = img_tk  # Prevent garbage collection
@@ -129,6 +151,7 @@ class FishCounterApp:
     def on_closing(self):
         self.stop_detection()
         self.root.destroy()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
