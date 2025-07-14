@@ -60,8 +60,8 @@ cap = cv2.VideoCapture(device_id, cv2.CAP_V4L2)
 # ===================================================================
 
 IMG_SIZE = (640, 640)
-NMS_THRESH = 0.5 #0.048
-OBJ_THRESH = 0.5 #0.048
+NMS_THRESH = 0.1 #0.048
+OBJ_THRESH = 0.1 #0.048
 
 # add path
 #realpath = os.path.abspath(__file__)
