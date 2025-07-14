@@ -873,242 +873,147 @@ def post_process(input_data):
     return boxes, classes, scores
 
 ######################### MAIN CODE ############################
+# Assume all necessary imports and helper functions (Sort, KalmanBoxTracker, post_process, etc.)
+# are present in this file.
 
-# Video Path
-#vid_path = "./videotest/videobaru.mp4"
-#vid_path = "/home/orangepi/fishcounter/rknn_model_zoo/examples/yolov5/model/lele.png"
+class FishTrackingEngine:
+    """
+    Encapsulates the entire fish detection, tracking, and counting pipeline.
+    """
+    def __init__(self, model_path="./rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn"):
+        """
+        Initializes the model, tracker, and all necessary parameters.
+        """
+        # --- Constants and Thresholds ---
+        self.IMG_SIZE = (640, 640)
+        self.NMS_THRESH = 0.1
+        self.OBJ_THRESH = 0.1
 
-#NULIS CSV
-# metrics_logger = MetricsLogger('/home/orangepi/fishcounter/program_1/detection_metrics.csv')
+        # --- Model Initialization ---
+        print("INFO: Initializing model...")
+        self.model, self.platform = setup_model(model_path)
+        self.co_helper = COCO_test_helper(enable_letter_box=True)
+        print("INFO: Model initialized.")
 
- # '0' for the default camera
-#cap = cv2.VideoCapture(vid_path)
-assert cap.isOpened(), "Error accessing camera"
+        # --- Initialize State ---
+        self.reset()
 
-# Get video properties for saving
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 640)
-cap.set(cv2.CAP_PROP_FPS, 30)
-#w, h, fps = (int(cap.get(x)) for x in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_HEIGHT, cv2.CAP_PROP_FPS))
-w=640
-h=640
-# Calculate the x-coordinate for the vertical line (70% of the frame width)
-line_x_pos = int(0.645 * 640)
-line_x_pos_right = int(0.78 * 640)
-line_x_pos_left = int(0.58 * 640)
+    def reset(self):
+        """
+        Resets the tracker and counters for a new session. Call this before starting a new video.
+        """
+        print("INFO: Resetting counters and tracker state.")
+        self.mot_tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
+        KalmanBoxTracker.count = 0  # Reset the static ID counter
 
-# Setup video writer to save output
-output_path = "./output_counting.avi"
-fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Codec
-video_writer = cv2.VideoWriter(output_path,
-                               cv2.VideoWriter_fourcc(*'mp4v'),
-                               30.0,
-                               (640, 640))
+        # -- Fish Counter State --
+        self.fish_count = 0
+        self.fish_count_2 = 0
+        self.fish_count_3 = 0
+        self.ID_already_counted = []
+        self.ID_already_counted_2 = []
+        self.ID_already_counted_3 = []
+        self.previous_track_2 = np.empty((0, 5))
+        self.previous_track_3 = np.empty((0, 5))
+        self.frame_counter = 0
 
+    def process_frame(self, frame):
+        """
+        Processes a single video frame to detect, track, and count fish.
 
-############### INITIALIZE MODEL ###############
-model_path = "./rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn"
-model, platform = setup_model(model_path)
+        Args:
+            frame (np.ndarray): The raw video frame from OpenCV.
 
+        Returns:
+            np.ndarray: The frame with visualizations (bounding boxes, IDs, counts) drawn on it.
+            dict: A dictionary containing the latest counts.
+        """
+        self.frame_counter += 1
+        im0 = frame.copy()
+        h, w, _ = im0.shape
 
-############### INITIALIZE TRACKER ###############
-mot_tracker = Sort()
-track_bbs_ids = np.empty((0,5))
-previous_track_2 = np.empty((0,5))
-previous_track_3 = np.empty((0,5))
+        # Define counting boundaries based on frame dimensions
+        boundary1 = [(int(0.58*w), 0), (int(0.58*w), h)]
+        boundary2 = [(int(0.68*w), 0), (int(0.68*w), h)]
+        boundary3 = [(int(0.78*w), 0), (int(0.78*w), h)]
+        line_x_pos = int(0.645 * w)
+        line_x_pos_left = int(0.58 * w)
+        line_x_pos_right = int(0.78 * w)
 
-############### INITIALIZE PREVIOUS TRACKING DATA ###############
-previous_track_bbs_ids = np.empty((0,5))  # This will hold tracking data from the previous frame
+        # --- Pre-processing ---
+        pad_color = (0, 0, 0)
+        img = self.co_helper.letter_box(im=im0, new_shape=self.IMG_SIZE, pad_color=pad_color)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+        # --- Detection ---
+        results = self.model.run([img])
 
+        # --- Post-processing ---
+        boxes, classes, scores = post_process(results, self.OBJ_THRESH, self.NMS_THRESH)
 
-############### INITIALIZE FISH COUNTER ###############
-ID_already_counted = []
-fish_count=0
+        # --- Tracking ---
+        detections = np.column_stack((boxes, scores)) if boxes.any() else np.empty((0, 5))
+        track_bbs_ids = self.mot_tracker.update(detections)
 
-ID_already_counted_2 = []
-fish_count_2=0
+        # --- Visualization and Counting ---
+        if boxes.any():
+            for box in boxes:
+                x_min, y_min, x_max, y_max = map(int, box)
+                cv2.rectangle(im0, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2) # Green for detections
 
-ID_already_counted_3 = []
-fish_count_3=0
-boundary1 = [(int(0.58*640),0),(int(0.58*640),640)]
-boundary2 = [(int(0.68*640),0),(int(0.68*640),640)]
-boundary3 = [(int(0.78*640),0),(int(0.78*640),640)]
+        for track in track_bbs_ids:
+            x_min, y_min, x_max, y_max, track_id = map(int, track)
+            cv2.rectangle(im0, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2) # Blue for tracked objects
+            cv2.putText(im0, f'ID:{track_id}', (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
-co_helper = COCO_test_helper(enable_letter_box=True)
+            # Your three counting methods
+            if track_id not in self.ID_already_counted and x_max > line_x_pos:
+                self.fish_count += 1
+                self.ID_already_counted.append(track_id)
 
-############### INITIALIZE FRAME COUNTER ###############
-counter = 0
+            if track_id not in self.ID_already_counted_2 and (x_max > line_x_pos_left and track[0] < line_x_pos_right):
+                self.fish_count_2 += 1
+                self.ID_already_counted_2.append(track_id)
 
-############### START ITERATING THROUGH VIDEO'S FRAMES ###############
-while cap.isOpened():
-  success, frame = cap.read()
-  if not success:
-      break  # Exit loop if no more frames
+            # Path-based counting
+            track_xywh = convert_bbox_to_xywh(track)
+            current_x, current_y, _, _, _ = track_xywh[0]
+            cv2.circle(im0, (int(current_x), int(current_y)), 5, (0, 255, 255), -1)
 
-  # Add frame counter on top of the video
-  counter+=1
-  print(f"frame ke-{counter}")
+            previous_3 = self.previous_track_3[self.previous_track_3[:, 4] == track_id]
+            previous_2 = self.previous_track_2[self.previous_track_2[:, 4] == track_id]
+            previous = previous_3 if len(previous_3) > 0 else previous_2
 
+            if len(previous) > 0:
+                prev_xywh = convert_bbox_to_xywh(previous[0])
+                prev_x, prev_y, _, _, _ = prev_xywh[0]
+                if track_id not in self.ID_already_counted_3:
+                    if check_cross(boundary1, (prev_x, prev_y), (current_x, current_y)) or \
+                       check_cross(boundary2, (prev_x, prev_y), (current_x, current_y)) or \
+                       check_cross(boundary3, (prev_x, prev_y), (current_x, current_y)):
+                        self.fish_count_3 += 1
+                        self.ID_already_counted_3.append(track_id)
 
-  ############### PRE PROCESSING ###############
-  preprocess_time_1 = time.time()
-  pad_color = (0, 0, 0)
-  img = co_helper.letter_box(im=frame.copy(), new_shape=(IMG_SIZE[1], IMG_SIZE[0]), pad_color=pad_color)
-  img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-  preprocess_time_2 = time.time()
-  preprocess_time_total = preprocess_time_2 - preprocess_time_1
-  print(f"Time taken to process the preprocessing: {preprocess_time_total:.6f} seconds")
+        # Update previous tracks history
+        self.previous_track_3 = self.previous_track_2
+        self.previous_track_2 = track_bbs_ids
 
-  ############### DETECTION ###############
-  det_time_1 = time.time()
-  results = model.run([img])
-  det_time_2 = time.time()
-  det_time_total = det_time_2 - det_time_1
-  print(f"Time taken to process the detection: {det_time_total:.6f} seconds")
+        # --- Draw UI Info ---
+        cv2.line(im0, (line_x_pos, 0), (line_x_pos, h), (0, 255, 0), 3)
+        cv2.line(im0, boundary1[0], boundary1[1], (0, 0, 255), 2)
+        cv2.line(im0, boundary2[0], boundary2[1], (0, 0, 255), 2)
+        cv2.line(im0, boundary3[0], boundary3[1], (0, 0, 255), 2)
 
-  ############### POST PROCESSING ###############
-  #boxes = np.empty((0,4))
-  postprocess_time_1 = time.time()
-  boxes, classes, scores = post_process(results)
-  postprocess_time_2 = time.time()
-  postprocess_time_total = postprocess_time_2 - postprocess_time_1
-  print(f"Time taken to process the postprocessing: {postprocess_time_total:.6f} seconds")
+        cv2.putText(im0, f'Count 1: {self.fish_count}', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        cv2.putText(im0, f'Count 2: {self.fish_count_2}', (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        cv2.putText(im0, f'Count 3: {self.fish_count_3}', (20, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+        cv2.putText(im0, f'Frame: {self.frame_counter}', (w - 200, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-  
-  #print("ini boxes")
-  #print(boxes.any())
-  #print("ini scores")
-  #print(scores)
-  #print("ini classes")
-  #print(classes)
+        counts = {
+            "count_1": self.fish_count,
+            "count_2": self.fish_count_2,
+            "count_3": self.fish_count_3
+        }
 
-  ############ DRAW DETECTIONS BOX ############
-  if boxes.any() == False:
-     continue
-  else:
-      for box in boxes:
-	    #print("box:",box)
-          x_min, y_min, x_max, y_max = box
-          x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-          color = (0, 255, 0)  # Green color in BGR format
-          thickness = 2  # Thickness of the bounding box
-          cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), color, thickness)
-
-  # print("previous_track_bbs_ids:")
-  # print(previous_track_bbs_ids)
-
-  ############### TRACKER ###############
-  track_time_1 = time.time()
-  detections = np.empty((0,5))
-  detections = np.column_stack((boxes, scores))
-  #print("detections")
-  #print(detections)
-  # Update tracker with current frame's detections
-  if np.any(detections): # if array detections is not empty
-    print("a")
-    track_bbs_ids = mot_tracker.update(np.array(detections))
-  else: # if array detections is empty
-    print("b")
-    track_bbs_ids = mot_tracker.update(np.empty((0, 5)))
-  # End timing
-  track_time_2 = time.time()
-  # Compute the time taken
-  track_time_total = track_time_2 - track_time_1
-  print(f"Time taken to process the tracking: {track_time_total:.6f} seconds")
-  #print("tracks")
-  #print(track_bbs_ids)
-
-  ############### DRAW TRACKED FISH AND THE ID ###############
-  ############### AND FISH COUNTER ###############
-  count_time_1 = time.time()
-  for track in track_bbs_ids:
-    x_min, y_min, x_max, y_max, track_id = track.astype(int)
-    color = (255, 0, 0)
-    thickness = 2
-    # Draw the bounding box
-    cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), color, thickness)
-    # Display the track ID
-    cv2.putText(frame, f'ID: {track_id}', (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-    ############### FISH COUNTER ###############
-    ID = int(track[4])
-    right_x = int(track[2])
-    left_x = int(track[0])
-    #if (ID not in ID_already_counted) and (right_x>line_x_pos):
-    if (ID not in ID_already_counted) and (right_x>line_x_pos):
-      fish_count+=1
-      ID_already_counted.append(ID)
-        
-    if (ID not in ID_already_counted_2) and (right_x>line_x_pos_left) and (left_x<line_x_pos_right):
-      fish_count_2+=1
-      ID_already_counted_2.append(ID)
-    track = convert_bbox_to_xywh(track)
-    current_x, current_y, _, _, current_id = track[0]
-    cv2.circle(frame, (int(current_x), int(current_y)), 5, (0, 255, 255), -1)
-    previous = previous_track_3[previous_track_3[:,4] == current_id]
-    if len(previous) == 0:
-       previous = previous_track_2[previous_track_2[:,4] == current_id]
-    print(previous)
-    if len(previous) > 0:
-      previous = convert_bbox_to_xywh(previous[0])
-      prev_x, prev_y, _, _, _ = previous[0]
-      if (current_id not in ID_already_counted_3) and check_cross(boundary1, (prev_x, prev_y), (current_x,current_y)):
-        fish_count_3+=1
-        ID_already_counted_3.append(ID)
-      if (current_id not in ID_already_counted_3) and check_cross(boundary2, (prev_x, prev_y), (current_x,current_y)):
-        fish_count_3+=1
-        ID_already_counted_3.append(ID)
-      if (current_id not in ID_already_counted_3) and check_cross(boundary3, (prev_x, prev_y), (current_x,current_y)):
-        fish_count_3+=1
-        ID_already_counted_3.append(ID)
-		
-  ############### DISPLAY NUMBER OF FISH COUNTED ###############
-  print(f"fish_count:{fish_count}")
-  print(f"fish_count:{fish_count_2}")
-  print(f"fish_count:{fish_count_3}")
-  count_time_2 = time.time()
-  count_time_total = count_time_2 - count_time_1
-  print(f"Time taken to process the counting: {count_time_total:.6f} seconds")
-  cv2.putText(frame, f'fish_count: {fish_count}', (100,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-  cv2.putText(frame, f'fish_count2: {fish_count_2}', (100,150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-  cv2.putText(frame, f'fish_count3: {fish_count_3}', (100,200), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
-  previous_track_3 = previous_track_2
-  previous_track_2 = track_bbs_ids
-  print(previous_track_3)
-  print(previous_track_2)
-
-  # Draw the vertical line on the frame
-  cv2.line(frame, (line_x_pos, 0), (line_x_pos, h), (0, 255, 0), 5)  # Green color (0, 255, 0) and 5 px thickness
-  cv2.line(frame, (line_x_pos_left, 0), (line_x_pos_left, h), (0, 0, 255), 2)  # Green color (0, 255, 0) and 5 px thickness
-  cv2.line(frame, (line_x_pos_right, 0), (line_x_pos_right, h), (0, 0, 255), 2)  # Green color (0, 255, 0) and 5 px thickness
-  
-  print(boundary1[0])
-  
-  cv2.line(frame, boundary1[0], boundary1[1], (0, 255, 0), 2)  # Green color (0, 255, 0) and 5 px thickness
-  cv2.line(frame, boundary2[0], boundary2[1], (0, 255, 0), 2)  # Green color (0, 255, 0) and 5 px thickness
-  cv2.line(frame, boundary3[0], boundary3[1], (0, 255, 0), 2)  # Green color (0, 255, 0) and 5 px thickness
-  
-  cv2.putText(frame, f'Frame: {counter}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
-  #NULIS CSV
-  # metrics_logger.log_metrics(
-  #    frame_number=counter,
-  #    preprocess_time=preprocess_time_total,
-  #    detection_time=det_time_total,
-  #    postprocess_time=postprocess_time_total,
-  #    tracking_time=track_time_total,
-  #    counting_time=count_time_total,
-  #    fish_count=fish_count)
-
-  # Write frame to output video
-  video_writer.write(frame)
-
-  # Optionally display the frame in real-time
-  cv2.imshow("Live Object Counting", frame)
-  if cv2.waitKey(1) == ord('q'):  # Press 'q' to quit
-      break
-
-cap.release()
-video_writer.release()
-cv2.destroyAllWindows()
+        # IMPORTANT: Return the annotated frame and the counts dictionary
+        return im0, counts
