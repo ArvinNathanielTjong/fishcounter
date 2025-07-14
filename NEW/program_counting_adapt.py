@@ -1092,14 +1092,14 @@ while cap.isOpened():
   cv2.putText(frame, f'Frame: {counter}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
   #NULIS CSV
-  metrics_logger.log_metrics(
-     frame_number=counter,
-     preprocess_time=preprocess_time_total,
-     detection_time=det_time_total,
-     postprocess_time=postprocess_time_total,
-     tracking_time=track_time_total,
-     counting_time=count_time_total,
-     fish_count=fish_count)
+  # metrics_logger.log_metrics(
+  #    frame_number=counter,
+  #    preprocess_time=preprocess_time_total,
+  #    detection_time=det_time_total,
+  #    postprocess_time=postprocess_time_total,
+  #    tracking_time=track_time_total,
+  #    counting_time=count_time_total,
+  #    fish_count=fish_count)
 
   # Write frame to output video
   video_writer.write(frame)
