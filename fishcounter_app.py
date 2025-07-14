@@ -14,16 +14,26 @@ import os
 sys.path.insert(0, str(Path(__file__).parent / "scripts"))
 from detector import YOLOv6Detector
 
-def list_video_devices():
-    # List /dev/video* devices
-    devices = sorted(glob.glob('/dev/video*'))
-    return devices if devices else ["/dev/video0"]
+# def list_video_devices(): #linux
+#     # List /dev/video* devices
+#     devices = sorted(glob.glob('/dev/video*')) #linux
+#     return devices if devices else ["/dev/video0"] #linux
+
+def list_video_devices(max_devices=5): #windows
+    devices = []
+    for i in range(max_devices):
+        cap = cv2.VideoCapture(i)
+        if cap is not None and cap.isOpened():
+            devices.append(str(i))
+            cap.release()
+    return devices if devices else ["0"]
 
 class FishCounterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("YOLOv6 Fish Counter")
-        self.root.attributes('-zoomed', True)
+        self.root.state('zoomed')  # Start maximized
+        self.root.configure(bg="Blue")
         self.running = False
         self.frame = None
         self.fish_count = 0
@@ -31,6 +41,7 @@ class FishCounterApp:
         # Camera path selection with ComboBox
         cam_frame = tk.Frame(root)
         cam_frame.pack(pady=5)
+        cam_frame.configure(bg="red")  # Blue background
         tk.Label(cam_frame, text="Camera Device:").pack(side=tk.LEFT)
         self.available_cams = list_video_devices()
         self.camera_var = tk.StringVar(value=self.available_cams[0])
@@ -65,7 +76,7 @@ class FishCounterApp:
     def start_detection(self):
         if not self.running:
             cam_path = self.camera_var.get()
-            self.cap = cv2.VideoCapture(cam_path)
+            self.cap = cv2.VideoCapture(int(cam_path)) #buat windows pake int, linux pake string
             if not self.cap.isOpened():
                 self.count_label.config(text=f"Error: Could not open camera at {cam_path}")
                 # Still show black frame
@@ -101,7 +112,7 @@ class FishCounterApp:
                 detections = []
                 fish_count = 0
             else:
-                detections = self.detector.detect(frame)
+                detections = self.detector.detect(frame, conf_thres=0.5, iou_thres=0.45)
                 fish_count = len(detections)
                 frame = self.detector.visualize(frame, detections)
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

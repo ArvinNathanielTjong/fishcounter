@@ -63,7 +63,7 @@ class YOLOv6Detector:
 if __name__ == "__main__":
     model_path = "../models/model1.pt"
     yaml_path = "../models/dataset.yaml"
-    camera_path = "/dev/video3"
+    camera_path = 1 #ini buat windows pake int, linux pake string
     detector = YOLOv6Detector(model_path, yaml_path, device="cpu")  # or "cuda:0" for GPU
 
     cap = cv2.VideoCapture(camera_path)
