@@ -907,7 +907,7 @@ video_writer = cv2.VideoWriter(output_path,
 
 
 ############### INITIALIZE MODEL ###############
-model_path = "./yolov6.rknn"
+model_path = "./rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn"
 model, platform = setup_model(model_path)
 
 
