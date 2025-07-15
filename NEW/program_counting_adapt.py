@@ -738,7 +738,7 @@ def check_cross(boundary, start_centroid, current_centroid):
 def setup_model(model_path):
     platform = 'rknn'
     from py_utils.rknn_executor import RKNN_model_container 
-    model = RKNN_model_container(model_path, 'rk3588')
+    model = RKNN_model_container(model_path, 'rk3588s')
     return model, platform
 
 def filter_boxes(boxes, box_confidences, box_class_probs):
