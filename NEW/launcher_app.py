@@ -1,185 +1,180 @@
+import cv2
 import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
-import cv2
 import threading
 import time
-import platform
+import logging
 import glob
 
-# Import the engine class from your other file
-from tracker_engine import FishTrackingEngine
+# --- Import your actual engine ---
+# Make sure 'program_counting_adapt.py' is in the same directory
+# or in Python's path.
+try:
+    # Assuming the class is in 'program_counting_adapt.py'
+    from program_counting_adapt import FishTrackingEngine
+except ImportError:
+    messagebox.showerror("Import Error", "Could not find 'program_counting_adapt.py'. Make sure it's in the same folder as this script.")
+    exit()
+
+# --- Setup Logging ---
+# This will show INFO messages from your engine in the console.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
 
 class FishCounterApp:
+    """
+    A simplified Tkinter GUI application for the FishTrackingEngine
+    with only Start and Stop buttons and robust, automatic camera detection.
+    """
     def __init__(self, root):
         self.root = root
-        self.root.title("Integrated Fish Counter")
-        self.root.geometry("1280x800")
-        self.root.configure(bg="#2c3e50")
+        self.root.title("Fish Counter")
+        self.root.geometry("800x650")
 
         # --- State Variables ---
-        self.running = False
+        self.is_running = False
+        self.video_thread = None
         self.cap = None
-        self.thread = None
+        self.engine = None
 
-        # --- Initialize the Engine ---
-        # This can take a moment, so it's good to let the user know.
-        print("INFO: Initializing tracking engine... Please wait.")
-        self.engine = FishTrackingEngine()
-        print("INFO: Engine ready.")
+        # --- Style ---
+        style = ttk.Style()
+        style.configure("TButton", font=("Helvetica", 12), padding=10)
+        style.configure("Header.TLabel", font=("Helvetica", 16, "bold"))
 
-        # --- UI Layout ---
-        # Top frame for controls
-        control_frame = tk.Frame(root, bg="#34495e", padx=10, pady=10)
-        control_frame.pack(fill=tk.X, side=tk.TOP)
+        # --- GUI Widgets ---
+        header_label = ttk.Label(root, text="Fish Detection and Counting", style="Header.TLabel")
+        header_label.pack(pady=10)
 
-        # Camera selection
-        tk.Label(control_frame, text="Select Camera:", bg="#34495e", fg="white").pack(side=tk.LEFT, padx=(10, 5))
-        self.available_cams = self.list_video_devices()
-        self.camera_var = tk.StringVar(value=self.available_cams[0] if self.available_cams else "")
-        self.camera_combo = ttk.Combobox(control_frame, textvariable=self.camera_var, values=self.available_cams, state="readonly", width=30)
-        self.camera_combo.pack(side=tk.LEFT, padx=5)
-
-        # Control Buttons
-        self.start_button = ttk.Button(control_frame, text="▶ Start Counting", command=self.start_counting, style="Accent.TButton")
-        self.start_button.pack(side=tk.LEFT, padx=20)
-        self.stop_button = ttk.Button(control_frame, text="■ Stop Counting", command=self.stop_counting, state=tk.DISABLED)
-        self.stop_button.pack(side=tk.LEFT, padx=5)
-        
-        # --- Counts Display ---
-        self.count_label = tk.Label(control_frame, text="Count: 0", font=("Arial", 16, "bold"), bg="#34495e", fg="#3498db")
-        self.count_label.pack(side=tk.RIGHT, padx=20)
-
-        # --- Video Display Label ---
         self.video_label = tk.Label(root, bg="black")
-        self.video_label.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+        self.video_label.pack(padx=10, pady=10, expand=True, fill="both")
 
-        # --- Event Handlers ---
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        controls_frame = ttk.Frame(root)
+        controls_frame.pack(pady=10)
 
-    def list_video_devices(self):
-        """Finds available video devices for Linux."""
-        if platform.system() != "Linux":
-            messagebox.showwarning("Warning", "This application is optimized for Linux. Camera detection may be unreliable.")
-            return ["0"] # Fallback for other systems
+        self.start_button = ttk.Button(controls_frame, text="Start", command=self.start_counting_thread)
+        self.start_button.grid(row=0, column=0, padx=10)
+
+        self.stop_button = ttk.Button(controls_frame, text="Stop", command=self.stop_counting, state=tk.DISABLED)
+        self.stop_button.grid(row=0, column=1, padx=10)
+
+        self.status_var = tk.StringVar(value="Ready")
+        self.status_bar = ttk.Label(root, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w", padding=5)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.root.protocol("WM_DELETE_WINDOW", self.quit_app)
+
+    def start_counting_thread(self):
+        """Starts the video processing in a separate thread."""
+        if self.is_running:
+            return
         
-        devices = sorted(glob.glob("/dev/video*"))
-        if not devices:
-            messagebox.showerror("Error", "No cameras found at /dev/video*. Please check your connection.")
-        return devices
-
-    def start_counting(self):
-        if self.running:
-            return
-
-        cam_path = self.camera_var.get()
-        if not cam_path:
-            messagebox.showerror("Error", "No camera selected or available.")
-            return
-
-        self.running = True
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
-        self.camera_combo.config(state=tk.DISABLED)
-
-        # Reset the engine's state for a fresh start
-        self.engine.reset()
-
-        # Initialize the camera
-        self.cap = cv2.VideoCapture(cam_path, cv2.CAP_V4L2)
-        if not self.cap.isOpened():
-            messagebox.showerror("Camera Error", f"Failed to open camera: {cam_path}")
-            self.stop_counting()
-            return
         
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.is_running = True
+        self.status_var.set("Initializing...")
+        
+        self.video_thread = threading.Thread(target=self.video_loop, daemon=True)
+        self.video_thread.start()
 
-        # Start the video processing in a background thread
-        self.thread = threading.Thread(target=self.video_loop, daemon=True)
-        self.thread.start()
+    def find_and_open_camera(self):
+        """
+        Automatically detects and opens the first available camera.
+        Tries higher index cameras first (e.g., /dev/video1 before /dev/video0).
+        """
+        # Scan for video devices
+        camera_paths = sorted(glob.glob("/dev/video*"), reverse=True)
+        logging.info(f"Found potential cameras: {camera_paths}")
+        if not camera_paths:
+            raise IOError("No cameras found. Please connect a camera.")
 
-    def stop_counting(self):
-        self.running = False
-        # Wait for the thread to finish
-        if self.thread and self.thread.is_alive():
-            self.thread.join()
+        for path in camera_paths:
+            self.status_var.set(f"Trying to open camera: {path}")
+            logging.info(f"Attempting to open {path}...")
+            # Try to open the camera using the V4L2 backend
+            cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
+            if cap.isOpened():
+                logging.info(f"Successfully opened camera: {path}")
+                self.status_var.set(f"Using camera: {path}")
+                return cap
+        
+        # If no camera could be opened after trying all paths
+        raise IOError(f"Could not open any camera. Tried: {camera_paths}")
 
-        if self.cap:
-            self.cap.release()
-            self.cap = None
-
-        # Show a black screen when stopped
-        black_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        self.display_frame(black_frame)
-
-        self.start_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.DISABLED)
-        self.camera_combo.config(state=tk.NORMAL)
 
     def video_loop(self):
-        """The main loop for reading frames and processing them."""
-        while self.running:
-            if not self.cap: break
+        """The main video processing loop that runs in the background."""
+        try:
+            # --- Camera Initialization ---
+            self.cap = self.find_and_open_camera()
             
-            ret, frame = self.cap.read()
-            if not ret:
-                print("WARN: Could not read frame from camera. Stopping.")
-                # Automatically stop if the camera feed is lost
-                self.root.after(0, self.stop_counting)
-                break
-            
-            # 🚀 Send the raw frame to the engine and get the processed result
-            processed_frame, counts = self.engine.process_frame(frame)
+            # --- Engine Initialization ---
+            self.status_var.set("Initializing Tracking Engine...")
+            model_path = "./rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn"
+            self.engine = FishTrackingEngine(model_path=model_path)
+            self.engine.reset()
 
-            # Schedule the UI update on the main thread
-            self.root.after(0, self.update_ui, processed_frame, counts)
-            time.sleep(0.01) # Yield to other threads
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-        print("INFO: Video loop has terminated.")
+            self.status_var.set("Processing...")
 
-    def update_ui(self, frame, counts):
-        """Updates the video label and count text in the UI."""
-        # Update the video feed
-        self.display_frame(frame)
-        
-        # Update the count label
-        # You can choose which count to display or show all of them
-        main_count = counts.get("count_1", 0)
-        self.count_label.config(text=f"Count: {main_count}")
+            # --- Main Processing Loop ---
+            while self.is_running:
+                ret, frame = self.cap.read()
+                if not ret:
+                    logging.error("Failed to read frame. Stopping.")
+                    break
 
-    def display_frame(self, frame):
-        """Converts a CV2 frame to a Tkinter image and displays it."""
-        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img_pil = Image.fromarray(img_rgb)
-        
-        # Resize to fit the label while maintaining aspect ratio (optional but recommended)
-        label_w, label_h = self.video_label.winfo_width(), self.video_label.winfo_height()
-        if label_w > 1 and label_h > 1: # Ensure the label has been rendered
-            img_pil.thumbnail((label_w, label_h), Image.Resampling.LANCZOS)
+                processed_frame, counts = self.engine.process_frame(frame)
+                self.update_gui_frame(processed_frame)
 
-        img_tk = ImageTk.PhotoImage(image=img_pil)
-        
-        # Display the image
-        self.video_label.config(image=img_tk)
-        # Keep a reference to prevent Python's garbage collector from deleting it
-        self.video_label.image = img_tk
+        except Exception as e:
+            logging.error(f"An error occurred in the video loop: {e}")
+            messagebox.showerror("Runtime Error", f"An error occurred: {e}")
+        finally:
+            # Cleanup on thread exit
+            if self.cap:
+                self.cap.release()
+            self.is_running = False
+            # Schedule GUI update on the main thread
+            self.root.after(0, self.on_stop)
 
-    def on_closing(self):
-        """Handles the window close event."""
-        print("INFO: Closing application...")
-        if self.running:
-            self.stop_counting()
-        self.root.destroy()
+    def update_gui_frame(self, frame):
+        """Converts a CV2 frame to a Tkinter image and updates the GUI."""
+        if frame is None:
+            return
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img_pil = Image.fromarray(img)
+        imgtk = ImageTk.PhotoImage(image=img_pil)
+
+        self.video_label.imgtk = imgtk
+        self.video_label.configure(image=imgtk)
+
+    def stop_counting(self):
+        """Signals the video loop to stop."""
+        if self.is_running:
+            self.is_running = False
+            self.status_var.set("Stopping...")
+
+    def on_stop(self):
+        """Handles GUI updates after the video loop has stopped."""
+        self.stop_button.config(state=tk.DISABLED)
+        self.start_button.config(state=tk.NORMAL)
+        self.status_var.set("Ready")
+        self.video_label.config(image='')
+        self.video_label.imgtk = None
+
+    def quit_app(self):
+        """Cleans up and closes the application."""
+        self.stop_counting()
+        # Give the thread a moment to stop gracefully before destroying the window
+        self.root.after(100, self.root.destroy)
+
 
 if __name__ == "__main__":
-    # Note: On some Linux systems, you might need to run with sudo
-    # if you get permission errors for the camera or NPU.
     root = tk.Tk()
-    
-    # Optional: Add a simple style for the buttons
-    style = ttk.Style()
-    style.configure("Accent.TButton", foreground="white", background="#2980b9", font=('Arial', 12, 'bold'))
-
     app = FishCounterApp(root)
     root.mainloop()

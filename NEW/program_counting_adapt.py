@@ -873,27 +873,38 @@ def post_process(input_data):
     return boxes, classes, scores
 
 ######################### MAIN CODE ############################
-# Assume all necessary imports and helper functions (Sort, KalmanBoxTracker, post_process, etc.)
-# are present in this file.
+# Assume all necessary imports and helper functions (Sort, KalmanBoxTracker, 
+# post_process, convert_bbox_to_xywh, check_cross, etc.) are present and correct.
 
 class FishTrackingEngine:
     """
     Encapsulates the entire fish detection, tracking, and counting pipeline.
     """
-    def __init__(self, model_path="./rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn"):
+    def __init__(self, model_path="./rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn", max_age=20, min_hits=3, iou_thresh=0.3):
         """
         Initializes the model, tracker, and all necessary parameters.
+        
+        Args:
+            model_path (str): Path to the .rknn model file.
+            max_age (int): Maximum number of frames to keep a track alive without a new detection.
+            min_hits (int): Minimum number of detections to start a track.
+            iou_thresh (float): IOU threshold for associating detections to tracks.
         """
         # --- Constants and Thresholds ---
         self.IMG_SIZE = (640, 640)
-        self.NMS_THRESH = 0.1
-        self.OBJ_THRESH = 0.1
+        self.NMS_THRESH = 0.048
+        self.OBJ_THRESH = 0.048
 
         # --- Model Initialization ---
         print("INFO: Initializing model...")
         self.model, self.platform = setup_model(model_path)
         self.co_helper = COCO_test_helper(enable_letter_box=True)
         print("INFO: Model initialized.")
+
+        # --- Tracker Configuration ---
+        self.max_age = max_age
+        self.min_hits = min_hits
+        self.iou_thresh = iou_thresh
 
         # --- Initialize State ---
         self.reset()
@@ -903,7 +914,8 @@ class FishTrackingEngine:
         Resets the tracker and counters for a new session. Call this before starting a new video.
         """
         print("INFO: Resetting counters and tracker state.")
-        self.mot_tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
+        # Initialize the SORT tracker with configured parameters
+        self.mot_tracker = Sort(max_age=self.max_age, min_hits=self.min_hits, iou_threshold=self.iou_thresh)
         KalmanBoxTracker.count = 0  # Reset the static ID counter
 
         # -- Fish Counter State --
@@ -932,7 +944,7 @@ class FishTrackingEngine:
         im0 = frame.copy()
         h, w, _ = im0.shape
 
-        # Define counting boundaries based on frame dimensions
+        # --- Define Counting Boundaries ---
         boundary1 = [(int(0.58*w), 0), (int(0.58*w), h)]
         boundary2 = [(int(0.68*w), 0), (int(0.68*w), h)]
         boundary3 = [(int(0.78*w), 0), (int(0.78*w), h)]
@@ -942,13 +954,13 @@ class FishTrackingEngine:
 
         # --- Pre-processing ---
         pad_color = (0, 0, 0)
-        img = self.co_helper.letter_box(im=im0, new_shape=self.IMG_SIZE, pad_color=pad_color)
+        # Using im0.copy() is an extra safeguard to prevent modification of the frame buffer
+        img = self.co_helper.letter_box(im=im0.copy(), new_shape=self.IMG_SIZE, pad_color=pad_color)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # --- Detection ---
+        # --- Detection & Post-processing ---
         results = self.model.run([img])
-
-        # --- Post-processing ---
+        # NOTE: This assumes your 'post_process' function is modified to accept thresholds.
         boxes, classes, scores = post_process(results, self.OBJ_THRESH, self.NMS_THRESH)
 
         # --- Tracking ---
@@ -956,47 +968,53 @@ class FishTrackingEngine:
         track_bbs_ids = self.mot_tracker.update(detections)
 
         # --- Visualization and Counting ---
+        # Draw green boxes for all current detections
         if boxes.any():
             for box in boxes:
                 x_min, y_min, x_max, y_max = map(int, box)
-                cv2.rectangle(im0, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2) # Green for detections
+                cv2.rectangle(im0, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
 
+        # Draw blue boxes and count for tracked objects
         for track in track_bbs_ids:
             x_min, y_min, x_max, y_max, track_id = map(int, track)
-            cv2.rectangle(im0, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2) # Blue for tracked objects
+            cv2.rectangle(im0, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2)
             cv2.putText(im0, f'ID:{track_id}', (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
-            # Your three counting methods
+            # Counting Method 1: Simple Line Cross
             if track_id not in self.ID_already_counted and x_max > line_x_pos:
                 self.fish_count += 1
                 self.ID_already_counted.append(track_id)
 
+            # Counting Method 2: Zone Entry
             if track_id not in self.ID_already_counted_2 and (x_max > line_x_pos_left and track[0] < line_x_pos_right):
                 self.fish_count_2 += 1
                 self.ID_already_counted_2.append(track_id)
 
-            # Path-based counting
+            # Counting Method 3: Path-Based Crossing
             track_xywh = convert_bbox_to_xywh(track)
             current_x, current_y, _, _, _ = track_xywh[0]
-            cv2.circle(im0, (int(current_x), int(current_y)), 5, (0, 255, 255), -1)
+            cv2.circle(im0, (int(current_x), int(current_y)), 5, (0, 255, 255), -1) # Draw centroid
 
-            previous_3 = self.previous_track_3[self.previous_track_3[:, 4] == track_id]
-            previous_2 = self.previous_track_2[self.previous_track_2[:, 4] == track_id]
-            previous = previous_3 if len(previous_3) > 0 else previous_2
+            # Find this track's position in previous frames
+            previous = self.previous_track_3[self.previous_track_3[:, 4] == track_id]
+            if len(previous) == 0:
+                previous = self.previous_track_2[self.previous_track_2[:, 4] == track_id]
 
             if len(previous) > 0:
                 prev_xywh = convert_bbox_to_xywh(previous[0])
                 prev_x, prev_y, _, _, _ = prev_xywh[0]
                 if track_id not in self.ID_already_counted_3:
-                    if check_cross(boundary1, (prev_x, prev_y), (current_x, current_y)) or \
-                       check_cross(boundary2, (prev_x, prev_y), (current_x, current_y)) or \
-                       check_cross(boundary3, (prev_x, prev_y), (current_x, current_y)):
+                    crossed = check_cross(boundary1, (prev_x, prev_y), (current_x, current_y)) or \
+                              check_cross(boundary2, (prev_x, prev_y), (current_x, current_y)) or \
+                              check_cross(boundary3, (prev_x, prev_y), (current_x, current_y))
+                    if crossed:
                         self.fish_count_3 += 1
                         self.ID_already_counted_3.append(track_id)
 
-        # Update previous tracks history
-        self.previous_track_3 = self.previous_track_2
-        self.previous_track_2 = track_bbs_ids
+        # --- Update Previous Tracks History (CRITICAL FIX) ---
+        # Use .copy() to create a new array, not just a reference.
+        self.previous_track_3 = self.previous_track_2.copy()
+        self.previous_track_2 = track_bbs_ids.copy()
 
         # --- Draw UI Info ---
         cv2.line(im0, (line_x_pos, 0), (line_x_pos, h), (0, 255, 0), 3)
@@ -1015,5 +1033,4 @@ class FishTrackingEngine:
             "count_3": self.fish_count_3
         }
 
-        # IMPORTANT: Return the annotated frame and the counts dictionary
         return im0, counts
