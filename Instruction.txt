@@ -1,0 +1,27 @@
+Instruction : 
+How to setup : 
+- sudo apt update
+- sudo apt install python3-tk python3-pil.imagetk
+- sudo apt install python3-pip
+- /bin/python -m pip install opencv-python
+- git submodule update --init --recursive 
+- pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1
+- pip install request
+- pip install filterpy
+
+
+- follow this GitHub : https://github.com/Qengineering/YoloV6-NPU 
+
+dependencies for rknn
+-  sudo apt-get update
+- sudo apt-get install cmake
+- pip3 install rknn-toolkit2
+
+follow this if you want to convert onnx to rknn : 
+https://github.com/airockchip/rknn_model_zoo/tree/main/examples/yolov6
+
+
+
+NOTES : 
+- pastikan anda sudah ada file rknn nya untuk menggunkan NPU 
+- NPU yang digunakan pada orange pi 5 pro "Rockchip RK3588S chip"
