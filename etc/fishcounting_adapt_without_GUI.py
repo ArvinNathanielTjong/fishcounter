@@ -17,51 +17,56 @@ import cv2
 # ===================================================================
 # BAGIAN BARU: PENGATURAN KAMERA ADAPTIF (MODIFIKASI)
 # ===================================================================
-import platform
-import glob
-import argparse
+# import platform
+# import glob
+# import argparse
 
-def list_video_devices_linux():
-    """Mendeteksi semua kamera yang tersedia di Linux."""
-    available_devices = []
-    video_paths = sorted(glob.glob("/dev/video*"))
-    for path in video_paths:
-        cap = cv2.VideoCapture(path)
-        if cap is not None and cap.isOpened():
-            available_devices.append(path)
-            cap.release()
-    return available_devices
+# def list_video_devices_linux():
+#     """Mendeteksi semua kamera yang tersedia di Linux."""
+#     available_devices = []
+#     video_paths = sorted(glob.glob("/dev/video*"))
+#     for path in video_paths:
+#         cap = cv2.VideoCapture(path)
+#         if cap is not None and cap.isOpened():
+#             available_devices.append(path)
+#             cap.release()
+#     return available_devices
 
-# Cek apakah script dijalankan di Linux, jika tidak, langsung hentikan.
-if platform.system() != "Linux":
-    print("ERROR: Skrip ini dirancang khusus untuk berjalan di Linux dengan NPU Rockchip (seperti Orange Pi).")
-    sys.exit()
+# # Cek apakah script dijalankan di Linux, jika tidak, langsung hentikan.
+# if platform.system() != "Linux":
+#     print("ERROR: Skrip ini dirancang khusus untuk berjalan di Linux dengan NPU Rockchip (seperti Orange Pi).")
+#     sys.exit()
 
-# Pengaturan argumen terminal untuk memilih kamera
-parser = argparse.ArgumentParser(description="RKNN Fish Counter untuk Orange Pi dengan kamera adaptif.")
-parser.add_argument('--camera', type=str, help='Path spesifik ke kamera, contoh: /dev/video0')
-args = parser.parse_args()
+# # Pengaturan argumen terminal untuk memilih kamera
+# parser = argparse.ArgumentParser(description="RKNN Fish Counter untuk Orange Pi dengan kamera adaptif.")
+# parser.add_argument('--camera', type=str, help='Path spesifik ke kamera, contoh: /dev/video0')
+# args = parser.parse_args()
 
-# Logika pemilihan kamera
-if args.camera:
-    device_id = args.camera
-    print(f"INFO: Mencoba membuka kamera yang dipilih: {device_id}")
-else:
-    print("INFO: Mendeteksi kamera yang tersedia...")
-    available_cams = list_video_devices_linux()
-    if not available_cams:
-        print("ERROR: Tidak ada kamera yang ditemukan di /dev/video*")
-        sys.exit(1)
-    device_id = available_cams[0]
-    print(f"INFO: Kamera tidak dipilih, menggunakan kamera pertama yang ditemukan: {device_id}")
+# # Logika pemilihan kamera
+# if args.camera:
+#     device_id = args.camera
+#     print(f"INFO: Mencoba membuka kamera yang dipilih: {device_id}")
+# else:
+#     print("INFO: Mendeteksi kamera yang tersedia...")
+#     available_cams = list_video_devices_linux()
+#     if not available_cams:
+#         print("ERROR: Tidak ada kamera yang ditemukan di /dev/video*")
+#         sys.exit(1)
+#     device_id = available_cams[0]
+#     print(f"INFO: Kamera tidak dipilih, menggunakan kamera pertama yang ditemukan: {device_id}")
 
-# Inisialisasi Video Capture (tetap menggunakan V4L2 untuk Linux)
-cap = cv2.VideoCapture(device_id, cv2.CAP_V4L2)
+# # Inisialisasi Video Capture (tetap menggunakan V4L2 untuk Linux)
+# cap = cv2.VideoCapture(device_id, cv2.CAP_V4L2)
+# Inisialisasi Video Capture dari file .avi
+
+video_file_path = "../output.avi"  # <-- Ganti dengan path ke file video Anda INI UNTUK VIDEO DEBUGGING
+cap = cv2.VideoCapture(video_file_path)
+
 # ===================================================================
 
 IMG_SIZE = (640, 640)
-NMS_THRESH = 0.1 #0.048
-OBJ_THRESH = 0.1 #0.048
+NMS_THRESH = 0.048 #0.048
+OBJ_THRESH = 0.048 #0.048
 
 # add path
 #realpath = os.path.abspath(__file__)
@@ -941,6 +946,12 @@ co_helper = COCO_test_helper(enable_letter_box=True)
 counter = 0
 
 ############### START ITERATING THROUGH VIDEO'S FRAMES ###############
+# --- LANGKAH UNTUK MEMBUAT FULLSCREEN ---
+window_name = 'Live Object Counting'
+cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+# ------------------------------------
+
 while cap.isOpened():
   success, frame = cap.read()
   if not success:

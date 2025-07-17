@@ -70,7 +70,7 @@ class FishCounterApp(tk.Tk):
                 model_path = "./utils/rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn" 
                 if not os.path.exists(model_path):
                      raise FileNotFoundError(f"Model tidak ditemukan di: {model_path}")
-                self.detector = ObjectDetector(model_path=model_path, img_size=(640, 640), obj_thresh=0.5, nms_thresh=0.1)
+                self.detector = ObjectDetector(model_path=model_path, img_size=(640, 640), obj_thresh=0.048, nms_thresh=0.048)
             except Exception as e:
                 messagebox.showerror("Model Error", f"Gagal memuat model AI:\n{e}")
                 return None
@@ -239,7 +239,8 @@ class BaseCountingPage(ttk.Frame):
         try:
             camera_path = self.camera_var.get()
             if platform.system() == "Linux":
-                self.cap = cv2.VideoCapture(camera_path, cv2.CAP_V4L2)
+                # self.cap = cv2.VideoCapture(camera_path, cv2.CAP_V4L2) #for camera
+                self.cap = cv2.VideoCapture("../output.avi")
             else:
                 self.cap = cv2.VideoCapture(int(camera_path))
 
@@ -257,6 +258,8 @@ class BaseCountingPage(ttk.Frame):
                 
                 self.controller.after(0, self._update_gui, processed_frame, counts)
 
+    
+
         except Exception as e:
             messagebox.showerror("Error Proses Video", f"Terjadi kesalahan:\n{e}")
         finally:
@@ -268,9 +271,45 @@ class BaseCountingPage(ttk.Frame):
         if self.stop_event.is_set():
             return
 
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+         # --- AWAL PERUBAHAN ---
+        # 1. Dapatkan ukuran widget label tempat video akan ditampilkan
+        label_w = self.video_label.winfo_width()
+        label_h = self.video_label.winfo_height()
+
+        # 2. Dapatkan ukuran frame video asli
+        frame_h, frame_w, _ = frame.shape
+
+        # 3. Hindari pembagian dengan nol jika label belum muncul di layar
+        if label_w == 1 or label_h == 1:
+            # Jika label belum punya ukuran, tunda update sebentar
+            self.controller.after(20, lambda: self._update_gui(frame, counts))
+            return
+
+        # 4. Hitung rasio skala agar pas tanpa merusak aspek rasio
+        scale_w = label_w / frame_w
+        scale_h = label_h / frame_h
+        scale = min(scale_w, scale_h)
+
+        # 5. Hitung dimensi baru dan resize frame
+        new_w = int(frame_w * scale)
+        new_h = int(frame_h * scale)
+        resized_frame = cv2.resize(frame, (new_w, new_h))
+        # --- AKHIR PERUBAHAN ---
+        # 3. Create black canvas the size of the label
+        canvas = np.zeros((label_h, label_w, 3), dtype=np.uint8)
+
+        # 4. Compute top-left coordinates to center the frame
+        y_offset = (label_h - new_h) // 2
+        x_offset = (label_w - new_w) // 2
+
+        # 5. Paste resized frame onto canvas
+        canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized_frame
+
+        # 6. Convert to PIL and display
+        img = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
         img_pil = Image.fromarray(img)
         img_tk = ImageTk.PhotoImage(image=img_pil)
+
         self.video_label.config(image=img_tk)
         self.video_label.image = img_tk
 
