@@ -54,6 +54,25 @@ class ObjectDetector:
         self.boundary2 = [(int(0.68*self.IMG_SIZE[0]), 0), (int(0.68*self.IMG_SIZE[0]), self.IMG_SIZE[1])]
         self.boundary3 = [(int(0.78*self.IMG_SIZE[0]), 0), (int(0.78*self.IMG_SIZE[0]), self.IMG_SIZE[1])]
 
+
+
+    # ====================================================================
+    # fOR RESETING THE DETECTOR STATE
+    # ====================================================================
+    def reset(self):
+        """
+        Resets all counters and tracked object IDs to their initial state.
+        """
+        print("INFO: Object detector state has been reset.") # For debugging
+        self.fish_count_1 = 0
+        self.fish_count_2 = 0
+        self.fish_count_3 = 0
+        self.counted_ids_1.clear()
+        self.counted_ids_2.clear()
+        self.counted_ids_3.clear()
+        # Reset any other tracking variables you might have here
+    # ====================================================================
+
     def process_frame(self, frame):
         """
         Accepts a single frame, performs detection and tracking, and returns the annotated frame.
