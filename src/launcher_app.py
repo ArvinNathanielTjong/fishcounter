@@ -15,6 +15,7 @@ import time
 # Pastikan file object_detector.py dan detector_util.py ada di dalam folder 'utils'
 try:
     from utils.object_detector import ObjectDetector
+    from utils.hardware_controller import BuzzerController
 except ImportError as e:
     messagebox.showerror("Import Error", f"Tidak dapat mengimpor ObjectDetector. Pastikan struktur folder sudah benar.\n\nError: {e}")
     import sys
@@ -45,6 +46,14 @@ class FishCounterApp(tk.Tk):
 
         self.frames = {}
         self.detector = None # Detector akan diinisialisasi saat dibutuhkan
+        
+        try:
+            # Assuming BuzzerController class is in the same file
+            self.buzzer = BuzzerController(pin=7) 
+        except Exception as e:
+            # Handle cases where GPIO setup fails (e.g., not run on Orange Pi)
+            messagebox.showwarning("Buzzer Warning", f"Could not initialize buzzer.\n\nError: {e}")
+            self.buzzer = None # Set to None so app doesn't crash
 
         # Siapkan semua halaman yang ada
         for F in (MainMenu, FreeCountPage, TargetCountPage):
@@ -54,6 +63,8 @@ class FishCounterApp(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame("MainMenu")
+
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def show_frame(self, page_name, target=None):
         """Menampilkan sebuah frame berdasarkan nama kelasnya."""
@@ -75,6 +86,12 @@ class FishCounterApp(tk.Tk):
                 messagebox.showerror("Model Error", f"Gagal memuat model AI:\n{e}")
                 return None
         return self.detector
+
+    def on_closing(self):
+        """Menangani event penutupan aplikasi."""
+        if self.buzzer:
+            self.buzzer.cleanup()
+        self.destroy()
 
 # ============================================================================
 # HALAMAN MENU UTAMA
@@ -399,6 +416,7 @@ class TargetCountPage(BaseCountingPage):
         super().start_processing() # Panggil fungsi start dari Base class
         self.set_target_button.config(state=tk.DISABLED)
         self.target_entry.config(state=tk.DISABLED)
+        self.target_sound_played = False
 
     def stop_processing(self):
         is_stopping_normally = not self.stop_event.is_set() #ambil data hitungan sebelum berhenti total (biar ga bug)
@@ -424,6 +442,20 @@ class TargetCountPage(BaseCountingPage):
         # 4. Atur ulang state tombol khusus untuk halaman ini.
         self.set_target_button.config(state=tk.NORMAL)
         self.target_entry.config(state=tk.NORMAL)
+
+
+    
+    def _update_gui(self, frame, counts):
+        # First, let the base class do its job
+        super()._update_gui(frame, counts)
+
+        # Now, add our target-specific logic
+        current_count = counts["count_3"] # Assuming method 3 is the primary count
+
+        if not self.target_sound_played and current_count >= self.target:
+            print("Target reached! Beeping.") # For debugging
+            self.controller.buzzer.beep(duration=0.5) # A longer beep for success
+            self.target_sound_played = True
 
 
 if __name__ == "__main__":

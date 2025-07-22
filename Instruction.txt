@@ -12,7 +12,7 @@ How to setup :
 
 - follow this GitHub : https://github.com/Qengineering/YoloV6-NPU 
 
-dependencies for rknn
+dependencies for rknn :
 -  sudo apt-get update
 - sudo apt-get install cmake
 - pip3 install rknn-toolkit2
@@ -20,6 +20,11 @@ dependencies for rknn
 follow this if you want to convert onnx to rknn : 
 https://github.com/airockchip/rknn_model_zoo/tree/main/examples/yolov6
 
+
+Follow this for setting up crontab (automatic boot):
+- On your PC linux "crontab -e"
+- add this line "@reboot (sleep 15 && export DISPLAY=:0 && cd /home/orangepi/github/fishcounter/src/ && /usr/bin/python3 launcher_app.py) >> /home/orangepi/github/fishcounter/launcher.log 2>&1"
+#make sure your path is correct!
 
 
 NOTES : 
