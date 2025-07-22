@@ -49,7 +49,7 @@ class FishCounterApp(tk.Tk):
         
         try:
             # Assuming BuzzerController class is in the same file
-            self.buzzer = BuzzerController(pin=7) 
+            self.buzzer = BuzzerController(gpio_num=47) # Pin 7 = GPIO47
         except Exception as e:
             # Handle cases where GPIO setup fails (e.g., not run on Orange Pi)
             messagebox.showwarning("Buzzer Warning", f"Could not initialize buzzer.\n\nError: {e}")
@@ -106,8 +106,8 @@ class MainMenu(ttk.Frame):
         style = ttk.Style()
         style.configure("Menu.TButton", font=("Helvetica", 18, "bold"), padding=20)
         # Style untuk frame dengan warna latar
-        style.configure("Left.TFrame", background= 'blue')  # Biru muda
-        style.configure("Right.TFrame", background='green') # Hijau muda
+        style.configure("Left.TFrame", background= '#259faf')  # Biru muda
+        style.configure("Right.TFrame", background='#57b8bc') # Hijau muda
 
         # 2. Konfigurasi grid agar membagi layar 50/50 dan bisa membesar
         self.columnconfigure(0, weight=1)
@@ -124,12 +124,12 @@ class MainMenu(ttk.Frame):
 
         # 5. BARULAH BUAT WIDGET YANG AKAN MASUK KE DALAM FRAME
         # Widget untuk frame kiri
-        label_left = ttk.Label(left_frame, text="Mode Bebas", font=("Helvetica", 24, "bold"), background='blue')
+        label_left = ttk.Label(left_frame, text="Mode Bebas", font=("Helvetica", 24, "bold"), background='#259faf')
         btn1 = ttk.Button(left_frame, text="Perhitungan\nBebas", style="Menu.TButton",
                           command=lambda: controller.show_frame("FreeCountPage"))
 
         # Widget untuk frame kanan
-        label_right = ttk.Label(right_frame, text="Mode Target", font=("Helvetica", 24, "bold"), background='green')
+        label_right = ttk.Label(right_frame, text="Mode Target", font=("Helvetica", 24, "bold"), background='#57b8bc')
         btn2 = ttk.Button(right_frame, text="Perhitungan\n Sesuai \nJumlah", style="Menu.TButton",
                           command=lambda: controller.show_frame("TargetCountPage"))
 
@@ -454,7 +454,7 @@ class TargetCountPage(BaseCountingPage):
 
         if not self.target_sound_played and current_count >= self.target:
             print("Target reached! Beeping.") # For debugging
-            self.controller.buzzer.beep(duration=0.5) # A longer beep for success
+            self.controller.buzzer.beep(duration=1) # A longer beep for success
             self.target_sound_played = True
 
 
