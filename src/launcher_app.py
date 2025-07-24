@@ -93,6 +93,52 @@ class FishCounterApp(tk.Tk):
             self.buzzer.cleanup()
         self.destroy()
 
+
+
+
+# ============================================================================
+#  ON-SCREEN KEYBOARD
+# ============================================================================
+class OnScreenKeyboard(ttk.Frame):
+    """
+    Sebuah widget keyboard numerik on-screen yang sederhana.
+    """
+    def __init__(self, parent, target_entry_widget):
+        super().__init__(parent)
+        self.target_entry = target_entry_widget
+
+        # Define the layout of the keyboard
+        keys = [
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9'],
+            ['Hapus', '0', '<-'] # Hapus = Clear, <- = Backspace
+        ]
+
+        # Create the buttons based on the layout
+        for y, row in enumerate(keys):
+            self.columnconfigure(y, weight=1)
+            for x, key in enumerate(row):
+                # We use a lambda with a default argument to capture the key's value
+                button = ttk.Button(self, text=key, command=lambda k=key: self._on_press(k))
+                button.grid(row=y, column=x, sticky="nsew", padx=2, pady=2, ipady=10)
+
+    def _on_press(self, key):
+        """
+        Handles what happens when a keyboard button is pressed.
+        """
+        current_text = self.target_entry.get()
+
+        if key.isdigit():
+            # Append the digit to the entry
+            self.target_entry.insert(tk.END, key)
+        elif key == '<-':
+            # Delete the last character (backspace)
+            self.target_entry.delete(len(current_text) - 1, tk.END)
+        elif key == 'Hapus':
+            # Delete all text (clear)
+            self.target_entry.delete(0, tk.END)
+
 # ============================================================================
 # HALAMAN MENU UTAMA
 # ============================================================================
@@ -379,6 +425,11 @@ class TargetCountPage(BaseCountingPage):
         self.target_var = tk.StringVar(value="10")
         self.target_entry = ttk.Entry(target_frame, textvariable=self.target_var, width=10)
         self.target_entry.pack(fill='x', padx=5)
+
+        # Buat instance keyboard dan letakkan di bawah input target
+        self.keyboard = OnScreenKeyboard(self.left_panel, self.target_entry)
+        self.keyboard.pack(fill='x', padx=5, pady=(0, 10))
+        # === AKHIR DARI KODE keyboard ===
 
         # Sembunyikan tombol start utama, karena kita akan pakai tombol di sini
         self.start_button.pack_forget() 
