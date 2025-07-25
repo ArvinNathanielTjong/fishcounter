@@ -30,7 +30,7 @@ class BuzzerController:
         self.buzzer.close()
 
 
-# --- Updated Motor Controller for JSON Communication ---
+# --- Updated Motor Controller and other hardware for JSON Communication ---
 class MotorController:
     """
     Manages serial (UART) communication using JSON format.
@@ -51,6 +51,12 @@ class MotorController:
             print(f"[MotorController] ERROR: Could not open port {self.port}. {e}")
             self.ser = None
             return False
+
+    # for speed control
+    def set_motor_speed(self, level):
+        """Mengirim perintah untuk mengatur level kecepatan motor."""
+        command = {"cmd": "SET_SPEED", "level": level}
+        return self.send_command(command)
 
     def send_command(self, command_dict):
         """
@@ -91,6 +97,12 @@ class MotorController:
     def request_battery_voltage(self):
         """Mengirim permintaan untuk mendapatkan data tegangan baterai."""
         command = {"cmd": "BAT"}
+        return self.send_command(command)
+
+    #PLUGGED OR NOT
+    def request_system_status(self):
+        """Mengirim permintaan untuk mendapatkan status sistem (seperti status AC)."""
+        command = {"cmd": "GET_STATUS"}
         return self.send_command(command)
 
     def read_response(self):

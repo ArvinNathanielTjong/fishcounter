@@ -419,3 +419,6 @@ Aplikasi ditutup, membersihkan pin GPIO...
 GPIO cleanup berhasil.
 GPIO initialized successfully
 GPIO cleaned up
+I rknn-toolkit2 version: 2.3.2
+I target set by user is: rk3588
+X connection to :0 broken (explicit kill or server shutdown).
