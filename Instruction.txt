@@ -48,7 +48,8 @@ simpan dan keluar.
 
 ========================= how to use crontab ===========================================
 - crontab -e
-- @reboot sleep 20 && cd /home/orangepi/github/fishcounter/src && /usr/bin/python3 launcher_app.py >> /home/orangepi/github/fishcounter/src/cron.log 2>&1
+fill it with : 
+- @reboot (sleep 15 && export DISPLAY=:0 && cd /home/orangepi/github/fishcounter/src/ && /usr/bin/python3 launcher_app.py) >> /home/orangepi/github/fishcounter/launcher.log 2>&1
 MAKE SURE YOUR PATH IS correct!
 save it by exiting
 
