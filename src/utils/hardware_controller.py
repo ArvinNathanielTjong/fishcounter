@@ -52,6 +52,14 @@ class MotorController:
             self.ser = None
             return False
 
+
+    # for led control
+    def set_led_brightness(self, level):
+        """Mengirim perintah untuk mengatur level kecerahan LED."""
+        command = {"cmd": "SET_BRIGHTNESS", "level": level}
+        return self.send_command(command)
+    
+
     # for speed control
     def set_motor_speed(self, level):
         """Mengirim perintah untuk mengatur level kecepatan motor."""
@@ -123,6 +131,18 @@ class MotorController:
             print(f"[MotorController] ERROR: Failed to read data. {e}")
         
         return None
+    
+    # start and stop charging
+    def start_charging(self):
+        """Mengirim perintah untuk memulai urutan charging."""
+        command = {"cmd": "START_CHARGE"}
+        return self.send_command(command)
+
+    def stop_charging(self):
+        """Mengirim perintah untuk menghentikan charging."""
+        command = {"cmd": "STOP_CHARGE"}
+        return self.send_command(command)
+    
 
     def close(self):
         """Closes the serial connection."""

@@ -71,6 +71,7 @@ class FishCounterApp(tk.Tk):
 
         # ### FITUR BARU: Variabel untuk menampilkan status baterai di GUI ###
         self.battery_status_var = tk.StringVar(value="Baterai: --% ❔")
+        self.is_system_charging = False # Status charging sistem, default tidak mengisi
 
         # Siapkan semua halaman yang ada
         for F in (MainMenu, FreeCountPage, TargetCountPage):
@@ -143,21 +144,28 @@ class FishCounterApp(tk.Tk):
                     # ### PERUBAHAN: Ambil status is_charging ###
                     is_charging = status_response.get('is_charging', False)
 
-                # --- Langkah 3: Tentukan Ikon Final berdasarkan semua kondisi ---
+                 # ### Logika Otomatis untuk Charging ###
+                # Kondisi untuk MULAI charging
+                if ac_plugged_in and percentage_val != '--' and percentage_val < 95 and not self.is_system_charging: #saat dibawah 95% charging biar awet
+                    print("[Auto-Charge] Memulai proses charging...")
+                    self.motor.start_charging()
+                    self.is_system_charging = True
+                
+                # Kondisi untuk BERHENTI charging
+                elif (not ac_plugged_in or (percentage_val != '--' and percentage_val >= 100)) and self.is_system_charging:
+                    print("[Auto-Charge] Menghentikan proses charging...")
+                    self.motor.stop_charging()
+                    self.is_system_charging = False
+
+                # --- Langkah 3: Tentukan Ikon Final ---
                 if ac_plugged_in:
-                    # Jika dicolok DAN sedang mengisi daya
-                    if is_charging:
-                        final_icon = "⚡️" # Ikon petir
-                    # Jika dicolok TAPI tidak mengisi daya (penuh atau fault)
-                    else:
-                        final_icon = "🔌" # Ikon colokan
-                # Jika tidak dicolok, gunakan ikon level baterai
+                    final_icon = "⚡️" if is_charging else "🔌"
                 else:
                     final_icon = battery_icon
                 
                 self.battery_status_var.set(f"Baterai: {percentage_val}% {final_icon}")
 
-            # Jadwalkan fungsi ini untuk berjalan lagi dalam 5 detik
+            # Jadwalkan fungsi ini untuk berjalan lagi
             self.after(5000, self._update_battery_status)
 
 
@@ -270,6 +278,10 @@ class BaseCountingPage(ttk.Frame):
         self.current_speed_level = 3
         self.max_speed_level = 5
 
+        # ### untuk kecerahan ###
+        self.current_brightness_level = 3 # Kecerahan default
+        self.max_brightness_level = 5     # Jumlah level kecerahan
+
         # --- Layout Utama ---
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -324,6 +336,20 @@ class BaseCountingPage(ttk.Frame):
 
         # Tombol Naikkan Kecepatan
         up_button = ttk.Button(speed_frame, text="+", width=3, command=self._increase_speed)
+        up_button.pack(side=tk.LEFT)
+
+        # ### widget kontrol kecerahan ###
+        brightness_frame = ttk.Frame(self.top_frame)
+        brightness_frame.pack(side=tk.LEFT, padx=(20, 5))
+
+        down_button = ttk.Button(brightness_frame, text="-", width=3, command=self._decrease_brightness)
+        down_button.pack(side=tk.LEFT)
+
+        self.brightness_label_var = tk.StringVar(value=f"Light: {self.current_brightness_level}/{self.max_brightness_level}")
+        brightness_label = ttk.Label(brightness_frame, textvariable=self.brightness_label_var, width=12, anchor="center")
+        brightness_label.pack(side=tk.LEFT, padx=5)
+
+        up_button = ttk.Button(brightness_frame, text="+", width=3, command=self._increase_brightness)
         up_button.pack(side=tk.LEFT)
 
         # ### FITUR BARU: Tambahkan label baterai di halaman penghitungan ###
@@ -495,6 +521,22 @@ class BaseCountingPage(ttk.Frame):
             if self.controller.motor and not self.stop_event.is_set():
                 self.controller.motor.set_motor_speed(self.current_speed_level)
 
+
+
+    # untuk kecerahan LED
+    def _increase_brightness(self):
+        if self.current_brightness_level < self.max_brightness_level:
+            self.current_brightness_level += 1
+            self.brightness_label_var.set(f"Light: {self.current_brightness_level}/{self.max_brightness_level}")
+            if self.controller.motor:
+                self.controller.motor.set_led_brightness(self.current_brightness_level)
+
+    def _decrease_brightness(self):
+        if self.current_brightness_level > 1:
+            self.current_brightness_level -= 1
+            self.brightness_label_var.set(f"Light: {self.current_brightness_level}/{self.max_brightness_level}")
+            if self.controller.motor:
+                self.controller.motor.set_led_brightness(self.current_brightness_level)
 
 # ============================================================================
 # HALAMAN PERHITUNGAN BEBAS
