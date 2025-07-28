@@ -1,4 +1,5 @@
 #include <ArduinoJson.h> // Library untuk mem-parsing dan membuat JSON
+#include <avr/wdt.h>
 
 // =================================================================
 // KONSTANTA UNTUK PENGATURAN (Sama seperti sebelumnya)
@@ -11,6 +12,9 @@
 #define MOTOR1_PIN 5 // PD5
 #define MOTOR2_PIN 6 // PD6
 #define MOTOR3_PIN 9 // PB1
+#define LED_PIN 3
+#define BOOST_EN_PIN 7
+#define CHARGE_EN_PIN 10
 
 #define R1_DIVIDER 150000.0f //tanya pak yusuf
 #define R2_DIVIDER 13000.0f //tanya pak yusuf
@@ -19,7 +23,7 @@
 #define ADC_REFERENCE_VOLTAGE 5.0f 
 #define NUM_SAMPLES 10 
 
-
+int currentLedPwm = 0;
 int currentMotorPwm = 0;
 // =================================================================
 // STRUKTUR DATA (Sama seperti sebelumnya)
@@ -47,7 +51,14 @@ void setup() {
     pinMode(MOTOR2_PIN, OUTPUT);
     pinMode(MOTOR3_PIN, OUTPUT);
 
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(BOOST_EN_PIN, OUTPUT);
+    pinMode(CHARGE_EN_PIN, OUTPUT);
 
+
+    // pastikan boost dan charge mati saat startup
+  digitalWrite(BOOST_EN_PIN, LOW);
+  digitalWrite(CHARGE_EN_PIN, LOW);
 
   // Pastikan SBC mati pada awalnya (opsional, tapi aman)
   digitalWrite(SBC_EN_PIN, LOW);
@@ -63,6 +74,12 @@ void setup() {
   digitalWrite(DISPLAY_EN_PIN, HIGH);
 }
 
+// Fungsi baru untuk mengatur kecerahan LED
+void setLedBrightness(int pwmValue) {
+  currentLedPwm = constrain(pwmValue, 0, 255);
+  analogWrite(LED_PIN, currentLedPwm);
+}
+
 
 // Fungsi baru untuk mengatur kecepatan semua motor
 void setAllMotorsSpeed(int pwmValue) {
@@ -75,7 +92,61 @@ void setAllMotorsSpeed(int pwmValue) {
 }
 
 
+// ### Fungsi untuk mematikan semua sistem ###
+void emergencyShutdown() {
+  // 1. Matikan semua output utama (Motor, Display, SBC)
+  setAllMotorsSpeed(0);
+  setLedBrightness(0); // Matikan LED utama juga
+
+  // kirim shutdown ke sbc (belom di implement)
+
+  
+  digitalWrite(DISPLAY_EN_PIN, LOW);
+  digitalWrite(SBC_EN_PIN, LOW);
+
+  // 2. Masuk ke loop hemat daya, tunggu sampai adaptor AC dicolokkan
+  //    Loop ini akan terus berjalan selama pin ACOK masih HIGH (adaptor tidak terpasang)
+  while (1) {
+    // Kedipkan LED utama sebagai sinyal "Baterai Lemah, colok charger"
+    analogWrite(LED_PIN, 80);
+    delay(200);
+    analogWrite(LED_PIN, 0);
+    delay(1800); // Berkedip pelan untuk hemat daya
+    //
+    //delay nya ganti dengan sleep..wakeup pakai interrupt dari watchdog.
+    //
+
+    if (digitalRead(ACOK_PIN) == LOW))
+         break;
+  }
+
+  // 3. Jika loop ini selesai, artinya adaptor AC SUDAH DICOLOK.
+  //    Saatnya untuk memulai ulang sistem.
+  
+  // Nyalakan LED utama secara solid sebagai tanda "Akan restart..."
+  analogWrite(LED_PIN, 255);
+  delay(1000);
+
+  // 4. Lakukan software reset menggunakan Watchdog Timer.
+  //    Ini sama seperti menekan tombol reset fisik.
+  wdt_enable(WDTO_15MS);
+  while (true) {
+    // Loop tak terbatas ini akan menyebabkan watchdog timer habis
+    // dan memaksa mikrokontroler untuk reset.
+  }
+}
+
+
 void loop() {
+    //Prioritas utama, cek kondisi baterai setiap saat ###
+  // Cek hanya jika adaptor TIDAK terpasang
+  if (digitalRead(ACOK_PIN) == HIGH) {
+    if (getBatteryInfo().percentage < 5) {
+      emergencyShutdown();
+    }
+  }
+
+
   // Cek apakah ada data yang masuk dari port serial (dari Orange Pi)
   if (Serial.available() > 0) {
     // Baca string JSON yang masuk sampai karakter newline
@@ -108,6 +179,27 @@ void loop() {
       int pwm = map(speedLevel, 1, 5, 51, 255);
       
       setAllMotorsSpeed(pwm);
+    }
+
+    else if (cmd && strcmp(cmd, "SET_BRIGHTNESS") == 0) {
+      int brightnessLevel = doc["level"] | 0;
+      int pwm = map(brightnessLevel, 1, 5, 51, 255);
+      setLedBrightness(pwm);
+    }
+
+ // ###  blok untuk memulai proses charging ###
+    else if (cmd && strcmp(cmd, "START_CHARGE") == 0) {
+      // Hanya mulai charge jika adaptor AC terpasang
+      if (digitalRead(ACOK_PIN) == LOW) {
+        digitalWrite(BOOST_EN_PIN, HIGH);
+        delay(3000); // Tunggu 3 detik
+        digitalWrite(CHARGE_EN_PIN, HIGH);
+      }
+    }
+    // ###  blok untuk menghentikan proses charging ###
+    else if (cmd && strcmp(cmd, "STOP_CHARGE") == 0) {
+      digitalWrite(CHARGE_EN_PIN, LOW);
+      digitalWrite(BOOST_EN_PIN, LOW);
     }
 
 
