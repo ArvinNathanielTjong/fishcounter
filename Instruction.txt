@@ -57,3 +57,22 @@ save it by exiting
 NOTES : 
 - pastikan anda sudah ada file rknn nya untuk menggunkan NPU 
 - NPU yang digunakan pada orange pi 5 pro "Rockchip RK3588S chip"
+
+
+
+============================= udev rules setup ===============================================
+To make the port connection name consistent in the Linux machine (Orange Pi 5 Pro), we need to detect the Arduino device and create a symlink using udev rules.
+To do that, create the udev rules file in /etc/udev/rules.d.
+You can name it whatever, but for example : "99-fishcounter.rules"
+In the file, add this in the file.
+```
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE="0666", SYMLINK+="arduino"
+```
+This means whenever there's a connection with idVendor 10c4 and idProduct ea60 (indicating it's an Arduino nano),
+it will create a symbolic link where you can access that port using /dev/arduino.
+
+After adding that file, do this in your terminal
+```
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
