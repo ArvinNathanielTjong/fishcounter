@@ -46,15 +46,17 @@ class ObjectDetector:
         self.counted_ids_3 = set()
 
         # --- Define Counting Boundaries ---
-        self.line_x_pos = int(0.645 * self.IMG_SIZE[0])
-        self.line_x_pos_right = int(0.72 * self.IMG_SIZE[0])
-        self.line_x_pos_left = int(0.51 * self.IMG_SIZE[0])
-        
-        self.boundary1 = [(int(0.60 * self.IMG_SIZE[0]), 0), (int(0.60 * self.IMG_SIZE[0]), self.IMG_SIZE[1])]
-        self.boundary2 = [(int(0.65 * self.IMG_SIZE[0]), 0), (int(0.65 * self.IMG_SIZE[0]), self.IMG_SIZE[1])]
-        self.boundary3 = [(int(0.70 * self.IMG_SIZE[0]), 0), (int(0.70 * self.IMG_SIZE[0]), self.IMG_SIZE[1])]
-        self.boundary4 = [(int(0.75 * self.IMG_SIZE[0]), 0), (int(0.75 * self.IMG_SIZE[0]), self.IMG_SIZE[1])]
-        self.boundary5 = [(int(0.80 * self.IMG_SIZE[0]), 0), (int(0.80 * self.IMG_SIZE[0]), self.IMG_SIZE[1])]
+        # PERBAIKAN: Gunakan IMG_SIZE[1] (tinggi) dan ganti nama variabel
+        self.line_y_pos = int(0.55 * self.IMG_SIZE[1])
+        self.line_y_pos_bottom = int(0.60 * self.IMG_SIZE[1])
+        self.line_y_pos_top = int(0.50 * self.IMG_SIZE[1])
+
+         # Definisikan boundary sebagai garis HORIZONTAL
+        self.boundary1 = [(0, int(0.50 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.50 * self.IMG_SIZE[1]))]
+        self.boundary2 = [(0, int(0.55 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.55 * self.IMG_SIZE[1]))]
+        self.boundary3 = [(0, int(0.60 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.60 * self.IMG_SIZE[1]))]
+        self.boundary4 = [(0, int(0.65 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.65 * self.IMG_SIZE[1]))]
+        self.boundary5 = [(0, int(0.70 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.70 * self.IMG_SIZE[1]))]
 
 
     # ====================================================================
@@ -132,11 +134,13 @@ class ObjectDetector:
         #Updates all fish counts and draws visualizations on the frame.
         vis_frame = frame.copy()
         # Draw all boundary lines
-        frame_height = vis_frame.shape[0]
-        cv2.line(vis_frame, (self.line_x_pos, 0), (self.line_x_pos, frame_height), (0, 255, 0), 3)
-        cv2.line(vis_frame, (self.boundary1[0][0], 0), (self.boundary1[1][0], frame_height), (0, 0, 255), 2)
-        cv2.line(vis_frame, (self.boundary2[0][0], 0), (self.boundary2[1][0], frame_height), (0, 0, 255), 2)
-        cv2.line(vis_frame, (self.boundary3[0][0], 0), (self.boundary3[1][0], frame_height), (0, 0, 255), 2)
+        # Draw all boundary lines
+        frame_width = vis_frame.shape[1]
+        # PERBAIKAN: Gambar garis horizontal dengan benar
+        cv2.line(vis_frame, (0, self.line_y_pos), (frame_width, self.line_y_pos), (0, 255, 0), 3)
+        cv2.line(vis_frame, self.boundary1[0], self.boundary1[1], (0, 0, 255), 2)
+        cv2.line(vis_frame, self.boundary2[0], self.boundary2[1], (0, 0, 255), 2)
+        cv2.line(vis_frame, self.boundary3[0], self.boundary3[1], (0, 0, 255), 2)
 
 
         # Draw raw detections in green
@@ -153,12 +157,12 @@ class ObjectDetector:
             cv2.putText(vis_frame, f"ID: {track_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
             # --- Counting Method 1: Simple Right Boundary Cross ---
-            if track_id not in self.counted_ids_1 and x2 > self.line_x_pos:
+            if track_id not in self.counted_ids_1 and y2 > self.line_y_pos: #rotasi ubah jadi y
                 self.fish_count_1 += 1
                 self.counted_ids_1.add(track_id)
 
             # --- Counting Method 2: Enter Region ---
-            if track_id not in self.counted_ids_2 and x2 > self.line_x_pos_left and x1 < self.line_x_pos_right:
+            if track_id not in self.counted_ids_2 and y2 > self.line_y_pos_top and y1 < self.line_y_pos_bottom: #rotasi ubah jadi y
                 self.fish_count_2 += 1
                 self.counted_ids_2.add(track_id)
 
@@ -221,7 +225,7 @@ class ObjectDetector:
         t = ((x0_0 - x0_1) * dy1 - (y0_0 - y0_1) * dx1) / denominator
         u = ((x0_0 - x0_1) * dy0 - (y0_0 - y0_1) * dx0) / denominator
         if 0 <= t <= 1 and 0 <= u <= 1:
-            return x1_1 > x0_1  # Only count if moving right
+            return y1_1 > y0_1  # Only count if moving up #rotasi ubah jadi y
         return False
 
     # --- Post-processing methods specific to the YOLOv6 model ---

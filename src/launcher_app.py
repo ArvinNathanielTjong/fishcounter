@@ -61,7 +61,7 @@ class FishCounterApp(tk.Tk):
         # Inisialisasi Motor Controller (Serial)
         try:
             # Sesuaikan port serial dengan yang Anda gunakan
-            SERIAL_PORT = '/dev/ttyUSB0' if platform.system() == "Linux" else 'COM8' 
+            SERIAL_PORT = '/dev/arduino' if platform.system() == "Linux" else 'COM8' 
             self.motor = MotorController(port=SERIAL_PORT)
             if not self.motor.ser:
                  messagebox.showwarning("Motor Warning", f"Could not connect to motor controller on {SERIAL_PORT}.")
@@ -304,59 +304,71 @@ class BaseCountingPage(ttk.Frame):
         self._create_control_widgets()
         self._create_count_widgets(parent_frame=self.left_panel)
 
+    # --- Kode BARU (Gunakan ini sebagai penggantinya) ---
     def _create_control_widgets(self):
-        self.back_button = ttk.Button(self.top_frame, text="< Kembali ke Menu",
-                                      command=lambda: self.controller.show_frame("MainMenu"))
-        self.back_button.pack(side=tk.LEFT, padx=5)
+        # Konfigurasi grid di dalam top_frame.
+        # Kolom 13 akan menjadi "pegas" yang meregang.
+        self.top_frame.columnconfigure(13, weight=1)
 
-        ttk.Label(self.top_frame, text="Kamera:").pack(side=tk.LEFT, padx=(20, 5))
+        # --- Penempatan Widget secara Eksplisit ---
+        col = 0 # Mulai dari kolom pertama
+
+        # Tombol Kembali
+        self.back_button = ttk.Button(self.top_frame, text="< Kembali", command=lambda: self.controller.show_frame("MainMenu"))
+        self.back_button.grid(row=0, column=col, padx=(5, 10)); col += 1
+
+        # Kontrol Kamera
+        ttk.Label(self.top_frame, text="Kamera:").grid(row=0, column=col, padx=(0, 5)); col += 1
         self.camera_options = self._find_cameras()
         self.camera_var = tk.StringVar(value=self.camera_options[0] if self.camera_options else "")
-        self.camera_dropdown = ttk.Combobox(self.top_frame, textvariable=self.camera_var, values=self.camera_options, state="readonly")
-        self.camera_dropdown.pack(side=tk.LEFT, padx=5)
+        self.camera_dropdown = ttk.Combobox(self.top_frame, textvariable=self.camera_var, values=self.camera_options, state="readonly", width=12)
+        self.camera_dropdown.grid(row=0, column=col, padx=(0, 10)); col += 1
 
+        # Tombol Start/Stop
         self.start_button = ttk.Button(self.top_frame, text="Start", command=self.start_processing)
-        self.start_button.pack(side=tk.LEFT, padx=5)
+        self.start_button.grid(row=0, column=col, padx=(0, 5)); col += 1
         self.stop_button = ttk.Button(self.top_frame, text="Stop", command=self.stop_processing, state=tk.DISABLED)
-        self.stop_button.pack(side=tk.LEFT, padx=5)
+        self.stop_button.grid(row=0, column=col, padx=(0, 10)); col += 1
 
-        # ### widget kontrol kecepatan ###
-        # Frame untuk mengelompokkan widget kecepatan
-        speed_frame = ttk.Frame(self.top_frame)
-        speed_frame.pack(side=tk.LEFT, padx=(20, 5))
+        # Kontrol Kecepatan
+        ttk.Label(self.top_frame, text="Speed:").grid(row=0, column=col, padx=(0, 5)); col += 1
+        down_button_speed = ttk.Button(self.top_frame, text="-", width=2, command=self._decrease_speed)
+        down_button_speed.grid(row=0, column=col); col += 1
+        self.speed_label_var = tk.StringVar(value=f"{self.current_speed_level}")
+        speed_label = ttk.Label(self.top_frame, textvariable=self.speed_label_var, width=3, anchor="center")
+        speed_label.grid(row=0, column=col, padx=2); col += 1
+        up_button_speed = ttk.Button(self.top_frame, text="+", width=2, command=self._increase_speed)
+        up_button_speed.grid(row=0, column=col, padx=(0, 10)); col += 1
 
-        # Tombol Turunkan Kecepatan
-        down_button = ttk.Button(speed_frame, text="-", width=3, command=self._decrease_speed)
-        down_button.pack(side=tk.LEFT)
+        # Kontrol Kecerahan
+        ttk.Label(self.top_frame, text="Light:").grid(row=0, column=col, padx=(0, 5)); col += 1
+        down_button_bright = ttk.Button(self.top_frame, text="-", width=2, command=self._decrease_brightness)
+        down_button_bright.grid(row=0, column=col); col += 1
+        self.brightness_label_var = tk.StringVar(value=f"{self.current_brightness_level}")
+        brightness_label = ttk.Label(self.top_frame, textvariable=self.brightness_label_var, width=3, anchor="center")
+        brightness_label.grid(row=0, column=col, padx=2); col += 1
+        up_button_bright = ttk.Button(self.top_frame, text="+", width=2, command=self._increase_brightness)
+        up_button_bright.grid(row=0, column=col); col += 1
 
-        # Label untuk menampilkan level kecepatan
-        self.speed_label_var = tk.StringVar(value=f"Speed: {self.current_speed_level}/{self.max_speed_level}")
-        speed_label = ttk.Label(speed_frame, textvariable=self.speed_label_var, width=12, anchor="center")
-        speed_label.pack(side=tk.LEFT, padx=5)
+        # Kolom 13 adalah pegas (dilewati)
+        col += 1
 
-        # Tombol Naikkan Kecepatan
-        up_button = ttk.Button(speed_frame, text="+", width=3, command=self._increase_speed)
-        up_button.pack(side=tk.LEFT)
-
-        # ### widget kontrol kecerahan ###
-        brightness_frame = ttk.Frame(self.top_frame)
-        brightness_frame.pack(side=tk.LEFT, padx=(20, 5))
-
-        down_button = ttk.Button(brightness_frame, text="-", width=3, command=self._decrease_brightness)
-        down_button.pack(side=tk.LEFT)
-
-        self.brightness_label_var = tk.StringVar(value=f"Light: {self.current_brightness_level}/{self.max_brightness_level}")
-        brightness_label = ttk.Label(brightness_frame, textvariable=self.brightness_label_var, width=12, anchor="center")
-        brightness_label.pack(side=tk.LEFT, padx=5)
-
-        up_button = ttk.Button(brightness_frame, text="+", width=3, command=self._increase_brightness)
-        up_button.pack(side=tk.LEFT)
-
-        # ### FITUR BARU: Tambahkan label baterai di halaman penghitungan ###
-        battery_label = ttk.Label(self.top_frame, textvariable=self.controller.battery_status_var, font=("Helvetica", 12))
-        battery_label.pack(side=tk.RIGHT, padx=10)
 
     def _create_count_widgets(self, parent_frame):
+         # --- TAMBAHKAN BLOK INI DI PALING ATAS FUNGSI ---
+        # Frame untuk menampung status baterai dengan rapi
+        battery_frame = ttk.Frame(parent_frame)
+        battery_frame.pack(fill='x', pady=(5, 10), padx=10)
+
+        # Label dan Status
+        ttk.Label(battery_frame, text="Status Baterai:", font=("Helvetica", 12, "bold")).pack(side="left")
+        battery_label = ttk.Label(battery_frame, textvariable=self.controller.battery_status_var)
+        battery_label.pack(side="left", padx=5)
+        
+        # Garis pemisah untuk kerapian
+        ttk.Separator(parent_frame, orient='horizontal').pack(fill='x', padx=5, pady=(0, 10))
+    
+#----------------------------------------------------------------------------------------------------
         self.count_labels = {}
         count_names = ["Metode 1 (Garis Batas)", "Metode 2 (Zona)", "Metode 3 (Lintasan)"]
         for i, name in enumerate(count_names):
@@ -510,14 +522,14 @@ class BaseCountingPage(ttk.Frame):
     def _increase_speed(self):
         if self.current_speed_level < self.max_speed_level:
             self.current_speed_level += 1
-            self.speed_label_var.set(f"Speed: {self.current_speed_level}/{self.max_speed_level}")
+            self.speed_label_var.set(f"{self.current_speed_level}")
             if self.controller.motor and not self.stop_event.is_set():
                 self.controller.motor.set_motor_speed(self.current_speed_level)
 
     def _decrease_speed(self):
         if self.current_speed_level > 1:
             self.current_speed_level -= 1
-            self.speed_label_var.set(f"Speed: {self.current_speed_level}/{self.max_speed_level}")
+            self.speed_label_var.set(f"{self.current_speed_level}")
             if self.controller.motor and not self.stop_event.is_set():
                 self.controller.motor.set_motor_speed(self.current_speed_level)
 
@@ -527,14 +539,14 @@ class BaseCountingPage(ttk.Frame):
     def _increase_brightness(self):
         if self.current_brightness_level < self.max_brightness_level:
             self.current_brightness_level += 1
-            self.brightness_label_var.set(f"Light: {self.current_brightness_level}/{self.max_brightness_level}")
+            self.brightness_label_var.set(f"{self.current_brightness_level}")
             if self.controller.motor:
                 self.controller.motor.set_led_brightness(self.current_brightness_level)
 
     def _decrease_brightness(self):
         if self.current_brightness_level > 1:
             self.current_brightness_level -= 1
-            self.brightness_label_var.set(f"Light: {self.current_brightness_level}/{self.max_brightness_level}")
+            self.brightness_label_var.set(f"{self.current_brightness_level}")
             if self.controller.motor:
                 self.controller.motor.set_led_brightness(self.current_brightness_level)
 
