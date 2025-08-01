@@ -122,6 +122,8 @@ sudo apt-get install cmake
 pip3 install rknn-toolkit2
 ```
 
+notes : in the link below you need to download the convert.py and follow step number 4
+
 Convert ONNX to RKNN:  
 🔗 https://github.com/airockchip/rknn_model_zoo/tree/main/examples/yolov6
 
