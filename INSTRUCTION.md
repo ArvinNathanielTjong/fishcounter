@@ -129,6 +129,12 @@ notes : in the link below you need to gitclone the whole git first :
 ```
 git clone https://github.com/airockchip/rknn_model_zoo.git
 ```
+go to the directory of 
+```
+/rknn_model_zoo/examples/yolov6/python
+```
+follow step number 4 below :
+
 Convert ONNX to RKNN:  
 🔗 https://github.com/airockchip/rknn_model_zoo/tree/main/examples/yolov6
 
