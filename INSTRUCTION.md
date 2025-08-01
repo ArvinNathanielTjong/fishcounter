@@ -114,6 +114,8 @@ pip install torch onnx
 ```
 then follow the instruction inside the training folder called ONNX_RKNNexport.ipynb
 
+notes : don't lose the onnx file (save it)
+
 ## 🧠 RKNN Setup (For NPU)
 
 ```bash
@@ -122,8 +124,11 @@ sudo apt-get install cmake
 pip3 install rknn-toolkit2
 ```
 
-notes : in the link below you need to download the convert.py and follow step number 4
+notes : in the link below you need to gitclone the whole git first : 
 
+```
+git clone https://github.com/airockchip/rknn_model_zoo.git
+```
 Convert ONNX to RKNN:  
 🔗 https://github.com/airockchip/rknn_model_zoo/tree/main/examples/yolov6
 
