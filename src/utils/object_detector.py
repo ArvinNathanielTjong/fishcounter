@@ -47,16 +47,16 @@ class ObjectDetector:
 
         # --- Define Counting Boundaries ---
         # PERBAIKAN: Gunakan IMG_SIZE[1] (tinggi) dan ganti nama variabel
-        self.line_y_pos = int(0.55 * self.IMG_SIZE[1])
-        self.line_y_pos_bottom = int(0.60 * self.IMG_SIZE[1])
-        self.line_y_pos_top = int(0.50 * self.IMG_SIZE[1])
+        self.line_y_pos = int(0.35 * self.IMG_SIZE[1])
+        self.line_y_pos_bottom = int(0.4 * self.IMG_SIZE[1])
+        self.line_y_pos_top = int(0.3 * self.IMG_SIZE[1])
 
          # Definisikan boundary sebagai garis HORIZONTAL
-        self.boundary1 = [(0, int(0.50 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.50 * self.IMG_SIZE[1]))]
-        self.boundary2 = [(0, int(0.55 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.55 * self.IMG_SIZE[1]))]
-        self.boundary3 = [(0, int(0.60 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.60 * self.IMG_SIZE[1]))]
-        self.boundary4 = [(0, int(0.65 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.65 * self.IMG_SIZE[1]))]
-        self.boundary5 = [(0, int(0.70 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.70 * self.IMG_SIZE[1]))]
+        self.boundary1 = [(0, int(0.3 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.3 * self.IMG_SIZE[1]))]
+        self.boundary2 = [(0, int(0.35 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.35 * self.IMG_SIZE[1]))]
+        self.boundary3 = [(0, int(0.4 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.40 * self.IMG_SIZE[1]))]
+        self.boundary4 = [(0, int(0.45 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.45 * self.IMG_SIZE[1]))]
+        self.boundary5 = [(0, int(0.50 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.50 * self.IMG_SIZE[1]))]
 
 
     # ====================================================================
