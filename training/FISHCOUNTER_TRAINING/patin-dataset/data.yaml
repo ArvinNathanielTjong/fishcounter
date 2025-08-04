@@ -4,5 +4,5 @@ test: C:/ITB/KP/kp/github/fishcounter/training/FISHCOUNTER_TRAINING/patin-datase
 
 is_coco: False
 
-nc: 1
-names: ['fish']
+nc: 3
+names: ['catfish','tilapia','fish']
