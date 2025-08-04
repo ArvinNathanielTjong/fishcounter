@@ -1,7 +1,7 @@
 # YOLOv6s model
 model = dict(
     type='YOLOv6n',
-    pretrained='C:/ITB/KP/kp/github/fishcounter/training/FISHCOUNTER_TRAINING/models/model_fish_old.pt',
+    pretrained='..\models\model_fish_old.pt',
     depth_multiple=0.33,
     width_multiple=0.25,
     backbone=dict(
