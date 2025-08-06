@@ -100,7 +100,7 @@ class FishCounterApp(tk.Tk):
         if self.detector is None:
             try:
                 # Sesuaikan path ke model Anda
-                model_path = "./utils/yolov6.rknn" 
+                model_path = "./utils/models/yolov6.rknn" 
                 if not os.path.exists(model_path):
                         raise FileNotFoundError(f"Model tidak ditemukan di: {model_path}")
                 self.detector = ObjectDetector(model_path=model_path, img_size=(640, 640), obj_thresh=0.048, nms_thresh=0.048)
@@ -435,7 +435,7 @@ class BaseCountingPage(ttk.Frame):
         try:
             camera_path = self.camera_var.get()
             # Opsi untuk menggunakan file video untuk testing di Linux
-            if platform.system() == "Linux" and camera_path == "../output.avi":
+            if platform.system() == "Linux" and camera_path == "../patin.mp4":
                  self.cap = cv2.VideoCapture(camera_path)
             # Opsi untuk kamera live
             else:
@@ -449,7 +449,7 @@ class BaseCountingPage(ttk.Frame):
                 if not ret:
                     print("Peringatan: Tidak dapat membaca frame. Mungkin akhir video.")
                     # Jika ini file video, loop kembali ke awal
-                    if platform.system() == "Linux" and camera_path == "../output.avi":
+                    if platform.system() == "Linux" and camera_path == "../patin.mp4":
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                         continue
                     else:
@@ -505,7 +505,7 @@ class BaseCountingPage(ttk.Frame):
             # Di Linux, cari /dev/video*
             video_paths = sorted(glob.glob("/dev/video*"))
             # Tambahkan opsi video file untuk testing
-            available_devices.append("../output.avi") 
+            available_devices.append("../patin.mp4") 
             for path in video_paths:
                 available_devices.append(path.replace("/dev/video", ""))
         else: # Windows
