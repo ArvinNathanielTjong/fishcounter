@@ -1,43 +1,5 @@
 # 📦 HOW TO COMBINE MODELS
 
-## ✅ General Steps
-
-1. Make sure you have the **dataset** (that is not trained yet).  
-   > (Personally, I use Roboflow to label)
-
-2. Label it with the name `"fish"` (to keep it general).
-
-3. Download the dataset (new dataset).
-
-4. Change the `data.yaml` `train`, `val`, and `test` paths. Example:
-
-    ```
-    train: /content/drive/MyDrive/fishcounter/patin-dataset/images/train
-    val: /content/drive/MyDrive/fishcounter/patin-dataset/images/valid
-    test: /content/drive/MyDrive/fishcounter/patin-dataset/images/test
-    ```
-
-5. Put it in your Google Drive like this:
-
-    ```
-    My Drive/
-    └── YOLOv6_Project/
-        ├── A.pt
-        └── my_new_dataset/
-            ├── images/
-            │   ├── train/
-            │   └── val/
-            └── labels/
-                ├── train/
-                └── val/
-    ```
-
-6. Open this Colab notebook:  
-   [Google Colab Link](https://colab.research.google.com/drive/1DRv1PBJXkkRe2cn3OSftZ1sD2MUQTKk8?usp=sharing)  
-   *(Currently not done)*
-
----
-
 # 🖥️ Combining Models Locally (PC Setup)
 
 ## 🧪 1. System Requirements
@@ -56,39 +18,11 @@
 
 ---
 
-## 📁 2. Folder Structure
-First, you need to download the YOLOv6 source code. Navigate to where you want your project to live and run the following command. This is the airockchip fork, which is helpful for later conversion steps to RKNN.
-
+follow this github : 
 ```
-git clone [https://github.com/airockchip/YOLOv6.git](https://github.com/airockchip/YOLOv6.git)
+git clone https://github.com/ArvinNathanielTjong/fishcounter-training.git
 ```
 
-After cloning the repository, arrange your project so it matches the structure below. This involves creating your custom configs and patin-dataset folders and placing your FISHCOUNTER_TRAINING.ipynb notebook at the top level.
-
-Ensure your training directory looks like this:
-
-```
-training/
-├── FISHCOUNTER_TRAINING/
-│   ├── configs/
-│   │   └── yolov6n_config.py     # <- change pretrained path here
-│   ├── patin-dataset/
-│   │   ├── data.yaml             # <- change image paths here
-│   │   └── images/, labels/, etc.
-│   ├── scripts/
-│   └── YOLOv6/
-└── FISHCOUNTER_TRAINING.ipynb
-```
-
-
-
-
-- Run `FISHCOUNTER_TRAINING.ipynb`
-- In the **local section**, check:
-  - `data.yaml` path
-  - config file path (`yolov6n_config.py`)
-
----
 
 # 🍊 Orange Pi 5 Pro Setup
 
@@ -108,37 +42,6 @@ Follow YOLOv6 NPU GitHub:
 
 ---
 
-## PT file -> ONNX
-```
-pip install torch onnx
-```
-then follow the instruction inside the training folder called ONNX_RKNNexport.ipynb
-
-notes : don't lose the onnx file (save it)
-
-## 🧠 RKNN Setup (For NPU)
-
-```bash
-sudo apt-get update
-sudo apt-get install cmake
-pip3 install rknn-toolkit2
-```
-
-notes : in the link below you need to gitclone the whole git first : 
-
-```
-git clone https://github.com/airockchip/rknn_model_zoo.git
-```
-go to the directory of 
-```
-/rknn_model_zoo/examples/yolov6/python
-```
-follow step number 4 below :
-
-Convert ONNX to RKNN:  
-🔗 https://github.com/airockchip/rknn_model_zoo/tree/main/examples/yolov6
-
----
 
 ## 🔔 GPIO (Buzzer) Setup
 

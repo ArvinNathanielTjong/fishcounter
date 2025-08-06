@@ -1,3 +1,0 @@
-dog_224x224.jpg
-goldfish_224x224.jpg
-space_shuttle_224.jpg

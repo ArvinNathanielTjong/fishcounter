@@ -1,8 +1,0 @@
-train: C:/ITB/KP/kp/github/fishcounter/training/FISHCOUNTER_TRAINING/patin-dataset/images/train
-val: C:/ITB/KP/kp/github/fishcounter/training/FISHCOUNTER_TRAINING/patin-dataset/images/valid
-test: C:/ITB/KP/kp/github/fishcounter/training/FISHCOUNTER_TRAINING/patin-dataset/images/test
-
-is_coco: False
-
-nc: 1
-names: ['fish']

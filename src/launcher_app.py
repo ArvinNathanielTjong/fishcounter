@@ -100,7 +100,7 @@ class FishCounterApp(tk.Tk):
         if self.detector is None:
             try:
                 # Sesuaikan path ke model Anda
-                model_path = "./utils/rknn_model_zoo-main/rknn_model_zoo-main/examples/yolov6/model/yolov6.rknn" 
+                model_path = "./utils/yolov6.rknn" 
                 if not os.path.exists(model_path):
                         raise FileNotFoundError(f"Model tidak ditemukan di: {model_path}")
                 self.detector = ObjectDetector(model_path=model_path, img_size=(640, 640), obj_thresh=0.048, nms_thresh=0.048)
