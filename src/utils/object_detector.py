@@ -27,7 +27,7 @@ class ObjectDetector:
 
         print("INFO: Initializing model...")
         self.model = RKNN_model_container(model_path, 'rk3588')
-        self.mot_tracker = Sort(max_age=1, min_hits=1, diou_threshold=0.3, dij_threshold = 0.9) # Using more robust parameters
+        self.mot_tracker = Sort(max_age=1, min_hits=2, diou_threshold=0.3, dij_threshold = 0.9) # Using more robust parameters
         self.metrics_logger = MetricsLogger('detection_metrics.csv')
         self.co_helper = COCO_test_helper(enable_letter_box=True)
         print("INFO: Model and components initialized.")
