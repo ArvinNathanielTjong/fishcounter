@@ -435,7 +435,7 @@ class BaseCountingPage(ttk.Frame):
         try:
             camera_path = self.camera_var.get()
             # Opsi untuk menggunakan file video untuk testing di Linux
-            if platform.system() == "Linux" and camera_path == "../patin-flow.mp4":
+            if platform.system() == "Linux" and camera_path == "../patin-flow-2.mp4":
                  self.cap = cv2.VideoCapture(camera_path)
             # Opsi untuk kamera live
             else:
@@ -449,7 +449,7 @@ class BaseCountingPage(ttk.Frame):
                 if not ret:
                     print("Peringatan: Tidak dapat membaca frame. Mungkin akhir video.")
                     # Jika ini file video, loop kembali ke awal
-                    if platform.system() == "Linux" and camera_path == "../patin-flow.mp4":
+                    if platform.system() == "Linux" and camera_path == "../patin-flow-2.mp4":
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                         continue
                     else:
@@ -505,7 +505,7 @@ class BaseCountingPage(ttk.Frame):
             # Di Linux, cari /dev/video*
             video_paths = sorted(glob.glob("/dev/video*"))
             # Tambahkan opsi video file untuk testing
-            available_devices.append("../patin-flow.mp4") 
+            available_devices.append("../patin-flow-2.mp4") 
             for path in video_paths:
                 available_devices.append(path.replace("/dev/video", ""))
         else: # Windows
