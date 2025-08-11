@@ -2930,3 +2930,4 @@ X connection to :0 broken (explicit kill or server shutdown).
 [MotorController] Sent JSON: {"cmd": "BAT"}
 [MotorController] Sent JSON: {"cmd": "GET_STATUS"}
 [MotorController] Disconnected from /dev/arduino
+[MotorController] ERROR: Could not open port /dev/arduino. [Errno 2] could not open port /dev/arduino: [Errno 2] No such file or directory: '/dev/arduino'

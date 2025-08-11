@@ -27,7 +27,7 @@ class ObjectDetector:
 
         print("INFO: Initializing model...")
         self.model = RKNN_model_container(model_path, 'rk3588')
-        self.mot_tracker = Sort(max_age=1, min_hits=2, diou_threshold=0.3, dij_threshold = 0.9) # Using more robust parameters
+        self.mot_tracker = Sort(max_age=5, min_hits=1, diou_threshold=0.3, dij_threshold=0.9) # Using more robust parameters
         self.metrics_logger = MetricsLogger('detection_metrics.csv')
         self.co_helper = COCO_test_helper(enable_letter_box=True)
         print("INFO: Model and components initialized.")
@@ -47,18 +47,11 @@ class ObjectDetector:
 
         # --- Define Counting Boundaries ---
         # PERBAIKAN: Gunakan IMG_SIZE[1] (tinggi) dan ganti nama variabel
-        self.line_y_pos = int(0.35 * self.IMG_SIZE[1])
+        self.line_y_pos = int(0.3 * self.IMG_SIZE[1])
         self.line_y_pos_bottom = int(0.4 * self.IMG_SIZE[1])
         self.line_y_pos_top = int(0.3 * self.IMG_SIZE[1])
 
-         # Definisikan boundary sebagai garis HORIZONTAL
-        self.boundary1 = [(0, int(0.3 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.3 * self.IMG_SIZE[1]))]
-        self.boundary2 = [(0, int(0.35 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.35 * self.IMG_SIZE[1]))]
-        self.boundary3 = [(0, int(0.4 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.40 * self.IMG_SIZE[1]))]
-        self.boundary4 = [(0, int(0.45 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.45 * self.IMG_SIZE[1]))]
-        self.boundary5 = [(0, int(0.50 * self.IMG_SIZE[1])), (self.IMG_SIZE[0], int(0.50 * self.IMG_SIZE[1]))]
-
-
+        
     # ====================================================================
     # fOR RESETING THE DETECTOR STATE
     # ====================================================================
@@ -138,9 +131,7 @@ class ObjectDetector:
         frame_width = vis_frame.shape[1]
         # PERBAIKAN: Gambar garis horizontal dengan benar
         cv2.line(vis_frame, (0, self.line_y_pos), (frame_width, self.line_y_pos), (0, 255, 0), 3)
-        cv2.line(vis_frame, self.boundary1[0], self.boundary1[1], (0, 0, 255), 2)
-        cv2.line(vis_frame, self.boundary2[0], self.boundary2[1], (0, 0, 255), 2)
-        cv2.line(vis_frame, self.boundary3[0], self.boundary3[1], (0, 0, 255), 2)
+    
 
 
         # Draw raw detections in green
@@ -166,35 +157,32 @@ class ObjectDetector:
                 self.fish_count_2 += 1
                 self.counted_ids_2.add(track_id)
 
-            # --- Counting Method 3: Line Intersection Check ---
-            xywh_track = BBoxUtils.convert_bbox_to_xywh(track)
-            current_x, current_y = int(xywh_track[0][0]), int(xywh_track[0][1])
+             # --- Counting Method 3: Robust Boundary Crossing (Bottom-to-Up Movement) ---
+            if track_id not in self.counted_ids_3:
+                # Cari posisi track ini di frame sebelumnya
+                prev_track_match = self.previous_track_2[self.previous_track_2[:, 4] == track_id]
+                
+                if len(prev_track_match) > 0:
+                    # Ambil koordinat y dari tepi ATAS box sebelumnya
+                    prev_y1 = int(prev_track_match[0][1])
+                    
+                    # Ambil koordinat y dari tepi ATAS box saat ini (y1 sudah ada dari `map(int, track)`)
+                    current_y1 = int(y1) 
+                    
+                    # Ambil posisi garis hitung
+                    counting_line_y = self.line_y_pos
     
+                    # KONDISI DIUBAH: Cek jika box melintasi garis dari BAWAH ke ATAS
+                    # Logikanya: Posisi atas box sebelumnya harus di bawah garis (nilai Y lebih besar)
+                    # dan posisi atas box sekarang harus di atas garis (nilai Y lebih kecil).
+                    if prev_y1 > counting_line_y and current_y1 <= counting_line_y:
+                        self.fish_count_3 += 1
+                        self.counted_ids_3.add(track_id)
+                        # Opsional: Beri warna khusus pada box yang baru terhitung
+                        cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 255), 2) # Warna kuning
             
-            # Find previous position of this track ID
-            prev_pos = None
-            # Check history from 2 frames ago first, then 1 frame ago
-            prev_track_3_match = self.previous_track_3[self.previous_track_3[:, 4] == track_id]
-            if len(prev_track_3_match) > 0:
-                prev_pos = BBoxUtils.convert_bbox_to_xywh(prev_track_3_match[0])[0]
-            else:
-                prev_track_2_match = self.previous_track_2[self.previous_track_2[:, 4] == track_id]
-                if len(prev_track_2_match) > 0:
-                    prev_pos = BBoxUtils.convert_bbox_to_xywh(prev_track_2_match[0])[0]
 
-            if prev_pos is not None and track_id not in self.counted_ids_3:
-                prev_x, prev_y = int(prev_pos[0]), int(prev_pos[1])
-                if (
-                    self._check_cross(self.boundary1, (prev_x, prev_y), (current_x, current_y)) or
-                    self._check_cross(self.boundary2, (prev_x, prev_y), (current_x, current_y)) or
-                    self._check_cross(self.boundary3, (prev_x, prev_y), (current_x, current_y)) or
-                    self._check_cross(self.boundary4, (prev_x, prev_y), (current_x, current_y)) or
-                    self._check_cross(self.boundary5, (prev_x, prev_y), (current_x, current_y)) ):
-
-                    self.fish_count_3 += 1
-                    self.counted_ids_3.add(track_id)
-
-        # --- FIX: Update historical track data using .copy() to prevent reference errors ---
+        # --- FIX: Update historical track data using .copy() to prevent reference errors --- 
         self.previous_track_3 = self.previous_track_2
         self.previous_track_2 = tracks.copy() if len(tracks) > 0 else np.empty((0, 5))
 
