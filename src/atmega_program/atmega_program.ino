@@ -116,7 +116,7 @@ void emergencyShutdown() {
     //delay nya ganti dengan sleep..wakeup pakai interrupt dari watchdog.
     //
 
-    if (digitalRead(ACOK_PIN) == LOW))
+    if (digitalRead(ACOK_PIN) == LOW)
          break;
   }
 
@@ -138,6 +138,7 @@ void emergencyShutdown() {
 
 
 void loop() {
+    
     //Prioritas utama, cek kondisi baterai setiap saat ###
   // Cek hanya jika adaptor TIDAK terpasang
   if (digitalRead(ACOK_PIN) == HIGH) {
