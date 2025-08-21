@@ -1,3 +1,5 @@
+## clone this REPO!
+
 # 📦 HOW TO COMBINE MODELS
 
 # 🖥️ Combining Models Locally (PC Setup)

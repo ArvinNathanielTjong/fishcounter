@@ -265,3 +265,4 @@ BatteryData getBatteryInfo() {
   
   return data;
 }
+
