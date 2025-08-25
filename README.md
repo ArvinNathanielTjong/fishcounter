@@ -22,7 +22,7 @@
 
 follow this github : 
 ```
-git clone https://github.com/ArvinNathanielTjong/fishcounter-training.git
+git clone --depth 1 https://github.com/ArvinNathanielTjong/fishcounter-training.git
 ```
 
 
@@ -36,14 +36,27 @@ sudo apt install python3-tk python3-pil.imagetk python3-pip
 /bin/python -m pip install opencv-python
 git submodule update --init --recursive
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1
-pip install request filterpy
+pip install requests filterpy
 ```
+
+
 
 Follow YOLOv6 NPU GitHub:  
 🔗 https://github.com/Qengineering/YoloV6-NPU
 
----
+### make sure to install the torch version to the one at the start if it uninstall and install the torch
+```
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 #if neccesary
+```
 
+
+Try to follow the instructions below:
+
+Clone the rknpu2 repository: git clone https://github.com/rockchip-linux/rknpu2.git
+
+Copy the shared lib file to the lib dir: sudo cp rknpu2/runtime/RK3588/Linux/librknn_api/aarch64/librknnrt.so /usr/lib/librknnrt.so
+
+---
 
 ## 🔔 GPIO (Buzzer) Setup
 
@@ -74,6 +87,7 @@ sudo udevadm trigger
 
 ```bash
 pip install pyserial
+sudo apt install python3-serial
 python3 launcher_app.py
 ```
 
