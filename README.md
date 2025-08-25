@@ -41,8 +41,52 @@ pip install requests filterpy
 
 
 
-Follow YOLOv6 NPU GitHub:  
+REFERENCE FOR THE THINGS BELOW :  
 🔗 https://github.com/Qengineering/YoloV6-NPU
+
+---
+### Installing the dependencies.
+Start with the usual 
+```
+sudo apt-get update 
+sudo apt-get upgrade
+sudo apt-get install cmake wget curl
+```
+
+#### RKNPU2
+```
+$ git clone --depth 1 https://github.com/airockchip/rknn-toolkit2.git
+```
+We only use a few files.
+```
+rknn-toolkit2-master
+│      
+└── rknpu2
+    │      
+    └── runtime
+        │       
+        └── Linux
+            │      
+            └── librknn_api
+                ├── aarch64
+                │   └── librknnrt.so
+                └── include
+                    ├── rknn_api.h
+                    ├── rknn_custom_op.h
+                    └── rknn_matmul_api.h
+
+cd ~/rknn-toolkit2-master/rknpu2/runtime/Linux/librknn_api/aarch64
+sudo cp ./librknnrt.so /usr/local/lib
+cd ~/rknn-toolkit2-master/rknpu2/runtime/Linux/librknn_api/include
+sudo cp ./rknn_* /usr/local/include
+```
+Save 2 GB of disk space by removing the toolkit. We do not need it anymore.
+```
+cd ~
+sudo rm -rf ./rknn-toolkit2-master
+```
+
+---
 
 ### make sure to install the torch version to the one at the start if it uninstall and install the torch
 ```
