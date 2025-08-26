@@ -5,6 +5,7 @@
 # 🖥️ Combining Models Locally (PC Setup)
 
 ## 🧪 1. System Requirements
+in your PC :
 
 - Check your NVIDIA version:
 
@@ -61,7 +62,7 @@ sudo apt-get install cmake wget curl
 
 #### RKNPU2
 ```
-$ git clone --depth 1 https://github.com/airockchip/rknn-toolkit2.git
+git clone --depth 1 https://github.com/airockchip/rknn-toolkit2.git
 ```
 We only use a few files.
 ```
@@ -86,6 +87,17 @@ sudo cp ./librknnrt.so /usr/local/lib
 cd ~/rknn-toolkit2-master/rknpu2/runtime/Linux/librknn_api/include
 sudo cp ./rknn_* /usr/local/include
 ```
+AFTER THAT GO TO THIS PATH : 
+```
+/rknn-toolkit2/rknn-toolkit2/packages/arm64 
+```
+then install the requirement & the package (mine is python 3.10): 
+```
+pip install -r arm64_requirements_cp310.txt
+pip install rknn_toolkit2-2.3.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
+
+```
+
 Save 2 GB of disk space by removing the toolkit. We do not need it anymore.
 ```
 cd ~
@@ -102,9 +114,16 @@ pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 #if neccesary
 
 Try to follow the instructions below:
 
-Clone the rknpu2 repository: git clone https://github.com/rockchip-linux/rknpu2.git
+Clone the rknpu2 repository: 
+```
+git clone --depth 1 https://github.com/rockchip-linux/rknpu2.git
+```
 
-Copy the shared lib file to the lib dir: sudo cp rknpu2/runtime/RK3588/Linux/librknn_api/aarch64/librknnrt.so /usr/lib/librknnrt.so
+Copy the shared lib file to the lib dir: 
+```
+sudo cp rknpu2/runtime/RK3588/Linux/librknn_api/aarch64/librknnrt.so /usr/lib/librknnrt.so
+```
+### you can delete the rknpu repo after you copy the lib file !
 
 ---
 
@@ -138,6 +157,11 @@ sudo udevadm trigger
 ```bash
 pip install pyserial
 sudo apt install python3-serial
+```
+### restart the orange pi!
+
+```
+# for launching the app
 python3 launcher_app.py
 ```
 
