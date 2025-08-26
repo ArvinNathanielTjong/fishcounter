@@ -28,6 +28,12 @@ git clone --depth 1 https://github.com/ArvinNathanielTjong/fishcounter-training.
 
 # 🍊 Orange Pi 5 Pro Setup
 
+## clone this repo
+``` bash
+git clone --depth 1 https://github.com/ArvinNathanielTjong/fishcounter.git
+```
+
+
 ## 📦 Install Python & Libraries
 
 ```bash
